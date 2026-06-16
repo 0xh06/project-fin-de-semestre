@@ -1,0 +1,32 @@
+# === Build artifacts ===
+build/
+*.o
+*.d
+*.exe
+*.out
+smartstudy
+
+# === IDE / Editor ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Data ===
+*.db
+*.db-journal
+*.db-wal
+
+# === Secrets ===
+.env
+
+# === Coverage ===
+coverage/
+*.gcno
+*.gcda
+*.gcov
