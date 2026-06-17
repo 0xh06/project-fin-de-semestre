@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { FileText, Upload, BrainCircuit, Trash2, CloudUpload, File, CheckCircle2, Search } from 'lucide-react'
+import { FileText, Upload, BrainCircuit, Trash2, File, CheckCircle2, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { documentsApi } from '@/lib/api'
 import { Document } from '@/types'
@@ -163,7 +163,7 @@ export default function DocumentsPage() {
         ) : (
           <div className="flex flex-col items-center gap-3">
             <div className={`p-3 rounded-xl transition-colors duration-300 ${isDragging ? 'bg-primary/10' : 'bg-secondary/50'}`}>
-              <CloudUpload className={`h-8 w-8 transition-colors duration-300 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+              <Upload className={`h-8 w-8 transition-colors duration-300 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
             </div>
             <div>
               <p className="font-semibold text-sm">Glissez-déposez votre document ici</p>

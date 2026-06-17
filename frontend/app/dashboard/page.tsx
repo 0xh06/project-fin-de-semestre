@@ -33,7 +33,6 @@ const MOCK_STATS: DashboardStats = {
   flashcards_mastered: 98,
   study_time_minutes: 847,
   weekly_xp: [120, 85, 200, 150, 95, 180, 75],
-  badges: [],
 }
 
 export default function DashboardPage() {
