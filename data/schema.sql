@@ -17,6 +17,21 @@ CREATE TABLE IF NOT EXISTS users (
     settings_json TEXT    DEFAULT '{}'
 );
 
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id          INTEGER NOT NULL,
+    provider         TEXT    NOT NULL,
+    provider_user_id TEXT    NOT NULL,
+    provider_email   TEXT,
+    created_at       TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider, provider_user_id),
+    UNIQUE(user_id, provider),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_accounts_user     ON oauth_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_oauth_accounts_provider ON oauth_accounts(provider, provider_user_id);
+
 -- ---------------------------------------------------------------------------
 -- 2. Documents PDF
 -- ---------------------------------------------------------------------------

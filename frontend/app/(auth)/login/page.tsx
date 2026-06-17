@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { authApi, API_BASE_URL } from '@/lib/api'
+import { authApi } from '@/lib/api'
+import { beginOAuth, getAuthErrorMessage } from '@/lib/oauth'
 import { BrainCircuit, ArrowRight, Eye, EyeOff, Sparkles, Github } from 'lucide-react'
 import Link from 'next/link'
 
@@ -13,8 +14,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState<'github' | 'google' | null>(null)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [urlError, setUrlError] = useState('')
+  const displayError = error || urlError
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setUrlError(getAuthErrorMessage(params.get('error')))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,9 +36,22 @@ export default function LoginPage() {
       localStorage.setItem('user', JSON.stringify(response.user))
       router.push('/dashboard')
     } catch (err: any) {
-      setError(err.message || 'Erreur de connexion')
+      setError(getAuthErrorMessage(err?.code) || err.message || 'Erreur de connexion')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOAuthLogin = async (provider: 'github' | 'google') => {
+    setError('')
+    setUrlError('')
+    setOauthLoading(provider)
+
+    try {
+      await beginOAuth(provider, 'login')
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err?.code) || err?.message || 'Connexion OAuth impossible')
+      setOauthLoading(null)
     }
   }
 
@@ -103,17 +125,17 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {error && (
+            {displayError && (
               <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 animate-slide-up">
                 <span className="text-red-400">⚠</span>
-                {error}
+                {displayError}
               </div>
             )}
 
             <Button
               type="submit"
               className="w-full h-11 gradient-primary text-white font-semibold rounded-xl shadow-md shadow-primary/20 hover:shadow-primary/35 hover:scale-[1.01] transition-all duration-200 gap-2"
-              disabled={loading}
+              disabled={loading || oauthLoading !== null}
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -142,17 +164,19 @@ export default function LoginPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => window.location.href = `${API_BASE_URL}/api/auth/github`}
+              onClick={() => void handleOAuthLogin('github')}
               className="h-11 bg-secondary/30 border-border/50 hover:bg-secondary hover:text-foreground transition-all gap-2"
+              disabled={loading || oauthLoading !== null}
             >
               <Github className="h-4 w-4" />
-              GitHub
+              {oauthLoading === 'github' ? 'Ouverture...' : 'GitHub'}
             </Button>
             <Button
               type="button"
               variant="outline"
-              onClick={() => window.location.href = `${API_BASE_URL}/api/auth/google`}
+              onClick={() => void handleOAuthLogin('google')}
               className="h-11 bg-secondary/30 border-border/50 hover:bg-secondary hover:text-foreground transition-all gap-2"
+              disabled={loading || oauthLoading !== null}
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                 <path d="M12.0003 4.75C13.7703 4.75 15.3553 5.36 16.6053 6.54998L20.0303 3.125C17.9502 1.19 15.2353 0 12.0003 0C7.31028 0 3.25527 2.69 1.28027 6.60998L5.27028 9.70498C6.21525 6.86002 8.87028 4.75 12.0003 4.75Z" fill="#EA4335" />
@@ -160,7 +184,7 @@ export default function LoginPage() {
                 <path d="M5.26498 14.2949C5.02498 13.5699 4.88501 12.7999 4.88501 11.9999C4.88501 11.1999 5.01998 10.4299 5.26498 9.7049L1.275 6.60986C0.46 8.22986 0 10.0599 0 11.9999C0 13.9399 0.46 15.7699 1.28 17.3899L5.26498 14.2949Z" fill="#FBBC05" />
                 <path d="M12.0004 24.0001C15.2404 24.0001 17.9654 22.935 19.9454 21.095L16.0804 18.095C15.0054 18.82 13.6204 19.245 12.0004 19.245C8.8704 19.245 6.21537 17.135 5.26538 14.29L1.27539 17.385C3.25539 21.31 7.3104 24.0001 12.0004 24.0001Z" fill="#34A853" />
               </svg>
-              Google
+              {oauthLoading === 'google' ? 'Ouverture...' : 'Google'}
             </Button>
           </div>
 

@@ -23,10 +23,18 @@ import type {
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(public status: number, message: string, public code?: string) {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+function createNetworkError() {
+  return new ApiError(
+    0,
+    `Impossible de joindre l'API sur ${API_BASE_URL}. Vérifie que le backend est démarré.`,
+    'api_unreachable'
+  );
 }
 
 async function request<T>(
@@ -44,14 +52,31 @@ async function request<T>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch {
+    throw createNetworkError();
+  }
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new ApiError(response.status, error || 'Request failed');
+    const errorText = await response.text();
+    let errorMessage = errorText || 'Request failed';
+
+    try {
+      const parsed = JSON.parse(errorText);
+      if (parsed?.error && typeof parsed.error === 'string') {
+        errorMessage = parsed.error;
+      }
+      const errorCode = typeof parsed?.code === 'string' ? parsed.code : undefined;
+      throw new ApiError(response.status, errorMessage, errorCode);
+    } catch {}
+
+    throw new ApiError(response.status, errorMessage);
   }
 
   return response.json();
@@ -86,13 +111,19 @@ export const documentsApi = {
     if (title) formData.append('title', title);
 
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
-      method: 'POST',
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-      body: formData,
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+        body: formData,
+      });
+    } catch {
+      throw createNetworkError();
+    }
 
     if (!response.ok) {
       throw new ApiError(response.status, 'Upload failed');

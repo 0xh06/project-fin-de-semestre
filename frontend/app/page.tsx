@@ -24,7 +24,7 @@ import {
 export default function LandingPage() {
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState<{ name?: string; email?: string } | null>(null)
+  const [user, setUser] = useState<{ name?: string; username?: string; email?: string } | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -68,7 +68,7 @@ export default function LandingPage() {
             {isLoggedIn ? (
               <div className="flex items-center gap-3">
                 <span className="text-sm text-slate-400 hidden sm:inline">
-                  Bonjour, <span className="font-semibold text-slate-200">{user?.name || 'Étudiant'}</span>
+                  Bonjour, <span className="font-semibold text-slate-200">{user?.username || user?.name || 'Étudiant'}</span>
                 </span>
                 <Link href="/dashboard">
                   <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20 hover:shadow-indigo-600/35 transition-all duration-300 hover:scale-[1.02] flex items-center gap-2">

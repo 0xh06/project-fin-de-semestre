@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BrainCircuit } from 'lucide-react'
+import { verifyOAuthState } from '@/lib/oauth'
 
 function CallbackContent() {
   const router = useRouter()
@@ -11,26 +12,38 @@ function CallbackContent() {
   useEffect(() => {
     const token = searchParams?.get('token')
     const name = searchParams?.get('name')
+    const email = searchParams?.get('email')
+    const provider = searchParams?.get('provider')
+    const userId = searchParams?.get('user_id')
+    const createdAt = searchParams?.get('created_at')
+    const clientState = searchParams?.get('client_state')
+    const flow = searchParams?.get('flow') === 'register' ? 'register' : 'login'
 
     if (token) {
+      if (!verifyOAuthState(provider, flow, clientState)) {
+        router.replace(`/${flow}?error=oauth_state_invalid`)
+        return
+      }
+
       localStorage.setItem('token', token)
       
       const user = {
-        id: Math.floor(Math.random() * 1000), // En prod, l'ID viendra du token ou d'une requête /me
+        id: userId ? Number(userId) : 0,
         username: name || 'Utilisateur OAuth',
-        email: 'oauth@smartstudy.ai'
+        email: email || `oauth@${provider || 'smartstudy'}.ai`,
+        created_at: createdAt || new Date().toISOString(),
       }
       
       localStorage.setItem('user', JSON.stringify(user))
       
       // Redirection après succès
       setTimeout(() => {
-        router.push('/dashboard')
+        router.replace('/dashboard')
       }, 1000)
     } else {
       // Pas de token = erreur
       setTimeout(() => {
-        router.push('/login?error=oauth_failed')
+        router.replace(`/${flow}?error=oauth_failed`)
       }, 2000)
     }
   }, [router, searchParams])

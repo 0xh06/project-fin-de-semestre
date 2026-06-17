@@ -69,12 +69,40 @@ make run        # Compile et exécute l'application
 Copiez `.env.example` vers `.env` et renseignez vos clés API :
 
 ```
-OPENAI_API_KEY=sk-...
+FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:8080
+NEXT_PUBLIC_API_URL=http://localhost:8080
+JWT_SECRET=change_me
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
 GEMINI_API_KEY=AIza...
-MISTRAL_API_KEY=...
 SMARTSTUDY_DB_PATH=./data/smartstudy.db
 ```
 
+
+## Frontend Web
+
+Le frontend Next.js se trouve dans `frontend/`.
+
+```bash
+npm install
+npm run dev:web
+```
+
+Le backend C écoute par défaut sur `http://localhost:8080` et le frontend sur `http://localhost:3000`.
+
+## OAuth GitHub et Google
+
+Le projet supporte déjà `GitHub` et `Google` côté backend et frontend.
+
+- `GitHub callback` : `http://localhost:8080/api/auth/github/callback`
+- `Google callback` : `http://localhost:8080/api/auth/google/callback`
+- `Frontend callback` : `http://localhost:3000/callback`
+
+Sans `GITHUB_CLIENT_ID` ou `GOOGLE_CLIENT_ID`, le backend utilise un mode de démonstration local.
+Si le backend n'est pas démarré, le frontend affiche maintenant une erreur claire au lieu de rediriger vers une URL cassée.
 ## Licence
 
 MIT
