@@ -500,6 +500,10 @@ static void build_oauth_state(const char *flow, const char *client_state, char *
     }
 }
 
+static bool has_env_value(const char *value) {
+    return value != NULL && value[0] != '\0';
+}
+
 static void redirect_oauth_error(struct mg_connection *c, const char *flow, const char *error_code) {
     const char *frontend_url = getenv("FRONTEND_URL") ? getenv("FRONTEND_URL") : "http://localhost:3000";
     char redirect_url[512];
@@ -528,7 +532,7 @@ static void handle_oauth_redirect(struct mg_connection *c, struct mg_http_messag
     if (strcmp(provider, "github") == 0) {
         const char *client_id = getenv("GITHUB_CLIENT_ID");
         const char *backend_url = getenv("BACKEND_URL") ? getenv("BACKEND_URL") : "http://localhost:8080";
-        if (!client_id) {
+        if (!has_env_value(client_id)) {
             snprintf(redirect_url, sizeof(redirect_url), "/api/auth/github/callback?code=mock_code&state=%s", combined_state);
         } else {
             char redirect_uri[512];
@@ -543,7 +547,7 @@ static void handle_oauth_redirect(struct mg_connection *c, struct mg_http_messag
         }
     } else if (strcmp(provider, "google") == 0) {
         const char *client_id = getenv("GOOGLE_CLIENT_ID");
-        if (!client_id) {
+        if (!has_env_value(client_id)) {
             snprintf(redirect_url, sizeof(redirect_url), "/api/auth/google/callback?code=mock_code&state=%s", combined_state);
         } else {
             const char *backend_url = getenv("BACKEND_URL") ? getenv("BACKEND_URL") : "http://localhost:8080";
@@ -621,11 +625,16 @@ static void handle_oauth_callback(struct mg_connection *c, struct mg_http_messag
     bool success = false;
 
     if (strcmp(provider, "github") == 0) {
-        const char *client_id = getenv("GITHUB_CLIENT_ID") ? getenv("GITHUB_CLIENT_ID") : "mock_id";
-        const char *client_secret = getenv("GITHUB_CLIENT_SECRET") ? getenv("GITHUB_CLIENT_SECRET") : "mock_secret";
+        const char *client_id = getenv("GITHUB_CLIENT_ID");
+        const char *client_secret = getenv("GITHUB_CLIENT_SECRET");
         
         // Mock success if no env var for demonstration, otherwise exchange
-        if (getenv("GITHUB_CLIENT_ID")) {
+        if (has_env_value(client_id) != has_env_value(client_secret)) {
+            redirect_oauth_error(c, flow, "oauth_misconfigured");
+            return;
+        }
+
+        if (has_env_value(client_id) && has_env_value(client_secret)) {
             success = oauth_github_exchange_code(code, client_id, client_secret, access_token, sizeof(access_token));
             if (success) profile = oauth_github_get_user(access_token);
         } else {
@@ -635,10 +644,15 @@ static void handle_oauth_callback(struct mg_connection *c, struct mg_http_messag
             profile->email = strdup("github@example.com");
         }
     } else if (strcmp(provider, "google") == 0) {
-        const char *client_id = getenv("GOOGLE_CLIENT_ID") ? getenv("GOOGLE_CLIENT_ID") : "mock_id";
-        const char *client_secret = getenv("GOOGLE_CLIENT_SECRET") ? getenv("GOOGLE_CLIENT_SECRET") : "mock_secret";
+        const char *client_id = getenv("GOOGLE_CLIENT_ID");
+        const char *client_secret = getenv("GOOGLE_CLIENT_SECRET");
         
-        if (getenv("GOOGLE_CLIENT_ID")) {
+        if (has_env_value(client_id) != has_env_value(client_secret)) {
+            redirect_oauth_error(c, flow, "oauth_misconfigured");
+            return;
+        }
+
+        if (has_env_value(client_id) && has_env_value(client_secret)) {
             const char *backend_url = getenv("BACKEND_URL") ? getenv("BACKEND_URL") : "http://localhost:8080";
             char redirect_uri[512];
             snprintf(redirect_uri, sizeof(redirect_uri), "%s/api/auth/google/callback", backend_url);

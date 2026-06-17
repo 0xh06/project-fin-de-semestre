@@ -68,6 +68,8 @@ export function getAuthErrorMessage(errorCode: string | null) {
       return 'La connexion avec le fournisseur externe a échoué.'
     case 'api_unreachable':
       return `Impossible de joindre le serveur d'authentification. Vérifie que l'API tourne bien sur ${API_BASE_URL}.`
+    case 'oauth_misconfigured':
+      return 'GitHub ou Google est mal configuré côté serveur. Vérifie le client ID et le client secret.'
     case 'oauth_state_invalid':
       return 'La vérification de sécurité OAuth a échoué. Réessaie.'
     case 'oauth_cancelled':

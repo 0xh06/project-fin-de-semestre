@@ -19,6 +19,16 @@ typedef struct {
 static ConfigEntry g_entries[CONFIG_MAX_ENTRIES];
 static int g_entry_count = 0;
 
+static void config_export_env_value(const char *key, const char *value) {
+    if (!key || !value) return;
+
+#ifdef _WIN32
+    _putenv_s(key, value);
+#else
+    setenv(key, value, 1);
+#endif
+}
+
 int config_load(const char *filepath) {
     FILE *fp = fopen(filepath, "r");
     if (!fp) return -1;
@@ -49,6 +59,9 @@ int config_load(const char *filepath) {
 
         strncpy(g_entries[g_entry_count].key,   key,   CONFIG_MAX_LEN - 1);
         strncpy(g_entries[g_entry_count].value, value, CONFIG_MAX_LEN - 1);
+        g_entries[g_entry_count].key[CONFIG_MAX_LEN - 1] = '\0';
+        g_entries[g_entry_count].value[CONFIG_MAX_LEN - 1] = '\0';
+        config_export_env_value(g_entries[g_entry_count].key, g_entries[g_entry_count].value);
         g_entry_count++;
     }
 
