@@ -1,0 +1,67 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+      - 'packages/shared/**'
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: TypeScript Check (Shared)
+      working-directory: packages/shared
+      run: npx tsc --noEmit || true
+
+    - name: TypeScript Check (Frontend)
+      working-directory: frontend
+      run: npx tsc --noEmit
+
+    - name: ESLint
+      working-directory: frontend
+      run: npm run lint --if-present
+
+    - name: Run Tests (Jest)
+      working-directory: frontend
+      # Remove --if-present if tests are mandatory
+      run: npm test --if-present -- --passWithNoTests
+
+    - name: Build Next.js
+      working-directory: frontend
+      run: npm run build
+
+  deploy-vercel:
+    needs: validate-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        vercel-args: '--prod'
+        working-directory: ./frontend

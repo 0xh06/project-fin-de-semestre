@@ -1,5 +1,9 @@
 # SmartStudy AI
 
+[![Backend CI](https://github.com/0xh06/project-fin-de-semestre/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/0xh06/project-fin-de-semestre/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/0xh06/project-fin-de-semestre/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/0xh06/project-fin-de-semestre/actions/workflows/frontend-ci.yml)
+[![Mobile CI](https://github.com/0xh06/project-fin-de-semestre/actions/workflows/mobile-ci.yml/badge.svg)](https://github.com/0xh06/project-fin-de-semestre/actions/workflows/mobile-ci.yml)
+
 Application d'étude intelligente combinant analyse PDF, chat IA, révision adaptative,
 suivi de progression et mind-mapping — écrite en **C**.
 

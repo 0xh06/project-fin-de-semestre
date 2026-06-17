@@ -1,0 +1,65 @@
+name: Mobile CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'mobile/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'mobile/**'
+      - 'packages/shared/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Jest (Shared Components)
+        working-directory: mobile
+        run: npm test --if-present -- --passWithNoTests
+
+  eas-build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Create Preview Build (PR)
+        if: github.event_name == 'pull_request'
+        working-directory: mobile
+        run: eas build --platform all --profile preview --non-interactive
+
+      - name: Create Production Build (Main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: mobile
+        run: eas build --platform all --profile production --non-interactive --auto-submit

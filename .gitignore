@@ -30,3 +30,19 @@ coverage/
 *.gcno
 *.gcda
 *.gcov
+
+# === Node & Web ===
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# === Mobile / Expo ===
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*

@@ -1,0 +1,83 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'lib/**'
+      - 'CMakeLists.txt'
+      - 'Makefile'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'lib/**'
+      - 'CMakeLists.txt'
+      - 'Makefile'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake build-essential libsqlite3-dev libcurl4-openssl-dev libssl-dev cppcheck clang-tidy lcov ${{ matrix.compiler }}
+
+    - name: Static Analysis (cppcheck)
+      if: matrix.compiler == 'gcc'
+      run: |
+        cppcheck --enable=all --inconclusive --std=c11 -Iinclude -Ilib --suppress=missingIncludeSystem --quiet src/
+
+    - name: Configure CMake
+      env:
+        CC: ${{ matrix.compiler }}
+      run: |
+        # On active la couverture de code uniquement pour GCC
+        if [ "${{ matrix.compiler }}" = "gcc" ]; then
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_FLAGS="--coverage -O0" -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+        else
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug
+        fi
+
+    - name: Build
+      run: cmake --build build -j $(nproc)
+
+    - name: Run Tests
+      working-directory: build
+      run: ctest --output-on-failure
+
+    - name: Generate Coverage Report
+      if: matrix.compiler == 'gcc' && success()
+      run: |
+        lcov --capture --directory build --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' 'lib/*' 'tests/*' --output-file coverage.info
+        genhtml coverage.info --output-directory coverage_report
+
+    - name: Upload Coverage
+      if: matrix.compiler == 'gcc' && success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage_report/
+
+  docker-build:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build Docker Image
+      run: |
+        docker build -t smartstudy-backend:ci .

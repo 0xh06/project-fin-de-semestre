@@ -12,6 +12,7 @@
 #include "core/config.h"
 #include "core/error.h"
 #include "utils/logger.h"
+#include "server/http_server.h"
 
 #define SMARTSTUDY_VERSION "0.1.0"
 
@@ -52,14 +53,29 @@ int main(int argc, char *argv[]) {
 
     LOG_INFO("SmartStudy AI v%s démarré avec succès.", SMARTSTUDY_VERSION);
 
-    /* --- Boucle principale (placeholder) --- */
+    /* --- Démarrage du serveur HTTP --- */
+    const char *port = getenv("PORT");
+    if (!port) port = "8080";
+
+    const char *jwt_secret = getenv("JWT_SECRET");
+    if (!jwt_secret) jwt_secret = "default_secret_key_for_dev_only";
+
+    HttpServerConfig server_config = {
+        .port = port,
+        .jwt_secret = jwt_secret
+    };
+
     printf("\n🎓 SmartStudy AI v%s\n", SMARTSTUDY_VERSION);
     printf("   Base de données : prête\n");
-    printf("   Tapez 'quit' pour quitter.\n\n");
+    printf("   Serveur HTTP : démarrage sur le port %s\n\n", port);
 
-    /* TODO: Implémenter la boucle interactive CLI ou le serveur HTTP */
+    if (!http_server_start(&app, &server_config)) {
+        LOG_ERROR("Échec du démarrage du serveur HTTP.");
+        app_shutdown(&app);
+        return EXIT_FAILURE;
+    }
 
-    /* --- Nettoyage --- */
+    /* --- Nettoyage (inatteignable sauf arrêt manuel du serveur) --- */
     app_shutdown(&app);
     LOG_INFO("Application terminée proprement.");
 

@@ -34,11 +34,15 @@ include_directories(${CURL_INCLUDE_DIRS})
 find_package(SQLite3 REQUIRED)
 include_directories(${SQLite3_INCLUDE_DIRS})
 
+find_package(OpenSSL REQUIRED)
+include_directories(${OPENSSL_INCLUDE_DIR})
+
 # ==============================================================================
-# 4. Gestion des sources (et de cJSON en tant que source embarquée)
+# 4. Gestion des sources
 # ==============================================================================
-# cJSON est compilé directement avec notre code
+# cJSON et Mongoose sont compilés directement avec notre code
 set(CJSON_SOURCES ${CMAKE_SOURCE_DIR}/lib/cJSON/cJSON.c)
+set(MONGOOSE_SOURCES ${CMAKE_SOURCE_DIR}/lib/mongoose/mongoose.c)
 
 # On récupère tous nos fichiers .c (sauf le main.c qu'on sépare pour les tests)
 file(GLOB_RECURSE APP_SOURCES "${CMAKE_SOURCE_DIR}/src/*.c")
@@ -51,13 +55,14 @@ add_executable(smartstudy
     ${CMAKE_SOURCE_DIR}/src/main.c 
     ${APP_SOURCES} 
     ${CJSON_SOURCES}
+    ${MONGOOSE_SOURCES}
 )
 
-# Liaison avec curl, sqlite3 et le module mathématique natif (m)
+# Liaison avec curl, sqlite3, openssl et le module mathématique natif (m)
 if(UNIX)
-    target_link_libraries(smartstudy ${CURL_LIBRARIES} ${SQLite3_LIBRARIES} m)
+    target_link_libraries(smartstudy ${CURL_LIBRARIES} ${SQLite3_LIBRARIES} ${OPENSSL_CRYPTO_LIBRARY} m)
 else()
-    target_link_libraries(smartstudy ${CURL_LIBRARIES} ${SQLite3_LIBRARIES})
+    target_link_libraries(smartstudy ${CURL_LIBRARIES} ${SQLite3_LIBRARIES} ${OPENSSL_CRYPTO_LIBRARY} ws2_32)
 endif()
 
 # ==============================================================================

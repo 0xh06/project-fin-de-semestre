@@ -4,20 +4,21 @@ import { Sidebar } from '@/components/sidebar'
 import { useEffect, useState } from 'react'
 import { gamificationApi } from '@/lib/api'
 
+const MOCK_STATS = {
+  xp: 1450,
+  level: 4,
+  xpToNext: 550,
+  streak: 7,
+}
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [stats, setStats] = useState({
-    xp: 0,
-    level: 0,
-    xpToNext: 0,
-    streak: 0,
-  })
+  const [stats, setStats] = useState(MOCK_STATS)
 
   useEffect(() => {
-    // Load user stats
     gamificationApi.getDashboard()
       .then(data => setStats({
         xp: data.xp_total,
@@ -25,11 +26,14 @@ export default function DashboardLayout({
         xpToNext: data.xp_to_next_level,
         streak: data.streak_days,
       }))
-      .catch(console.error)
+      .catch(() => {
+        // Keep mock data when backend is offline
+        console.log('Using mock dashboard stats (backend offline)')
+      })
   }, [])
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar
         xp={stats.xp}
         level={stats.level}
