@@ -44,7 +44,7 @@ SSError gemini_chat(const char *api_key,
 
     /* Appel HTTP (pas de Bearer pour Gemini, clé dans l'URL) */
     HttpResponse http_resp;
-    SSError err = http_post_json(url, payload, NULL, &http_resp);
+    SSError err = http_post_json(url, payload, NULL, 0, &http_resp);
     free(payload);
 
     if (err != SS_OK) {

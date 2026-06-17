@@ -40,8 +40,11 @@ const char *config_get(const char *key, const char *default_value);
 int config_get_int(const char *key, int default_value);
 
 /**
- * Libère toute la configuration chargée en mémoire.
+ * Nettoie la mémoire allouée par la configuration.
  */
 void config_free(void);
+
+#define DB_MODE_LOCAL  0
+#define DB_MODE_REMOTE 1
 
 #endif /* SMARTSTUDY_CORE_CONFIG_H */

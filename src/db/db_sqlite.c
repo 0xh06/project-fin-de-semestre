@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "db/db.h"
+#include "db/db_interface.h"
 
 /* Handle global (Singleton pour l'app) */
 static sqlite3 *g_db = NULL;
@@ -340,3 +341,41 @@ DBError chat_message_save(const DBChatMessage *msg, int64_t *out_id) {
     if (out_id) *out_id = sqlite3_last_insert_rowid(g_db);
     return DB_OK;
 }
+
+DBError sqlite_document_get_all_by_user(int64_t user_id, DBDocument **out_docs, int *out_count) {
+    /* STUB */
+    if (out_docs) *out_docs = NULL;
+    if (out_count) *out_count = 0;
+    return DB_OK;
+}
+
+void sqlite_document_list_free(DBDocument *docs, int count) {
+    /* STUB */
+    (void)docs;
+    (void)count;
+}
+
+DBError sqlite_flashcard_update_review(int64_t card_id, double difficulty, int interval_days, const char *next_review) {
+    /* STUB */
+    return DB_OK;
+}
+
+/* Instanciation de l'interface SQLite */
+DBInterface sqlite_interface = {
+    .init = db_init,
+    .close = db_close,
+    .begin = db_begin,
+    .commit = db_commit,
+    .rollback = db_rollback,
+    .user_create = user_create,
+    .user_find_by_email = user_find_by_email,
+    .document_save = document_save,
+    .document_get_all_by_user = sqlite_document_get_all_by_user,
+    .flashcard_save = flashcard_save,
+    .flashcard_update_review = sqlite_flashcard_update_review,
+    .flashcard_list_due_today = flashcard_list_due_today,
+    .chat_message_save = chat_message_save,
+    .user_free = user_free,
+    .document_list_free = sqlite_document_list_free,
+    .flashcard_list_free = flashcard_list_free
+};
