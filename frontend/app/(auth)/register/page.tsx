@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { authApi } from '@/lib/api'
+import { authApi, API_BASE_URL } from '@/lib/api'
 import { BrainCircuit, ArrowRight, Eye, EyeOff, CheckCircle2, Github } from 'lucide-react'
 import Link from 'next/link'
 
@@ -177,7 +177,7 @@ export default function RegisterPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => window.location.href = 'https://github.com/login/oauth/authorize?client_id=VOTRE_GITHUB_CLIENT_ID'}
+              onClick={() => window.location.href = `${API_BASE_URL}/api/auth/github`}
               className="h-11 bg-secondary/30 border-border/50 hover:bg-secondary hover:text-foreground transition-all gap-2"
             >
               <Github className="h-4 w-4" />
@@ -186,7 +186,7 @@ export default function RegisterPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=VOTRE_GOOGLE_CLIENT_ID&redirect_uri=http://localhost:8080/api/auth/google/callback&response_type=code&scope=email%20profile'}
+              onClick={() => window.location.href = `${API_BASE_URL}/api/auth/google`}
               className="h-11 bg-secondary/30 border-border/50 hover:bg-secondary hover:text-foreground transition-all gap-2"
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">

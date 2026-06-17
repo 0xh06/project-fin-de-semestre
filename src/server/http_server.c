@@ -67,6 +67,39 @@ static void handle_auth_login(struct mg_connection *c, struct mg_http_message *h
 
 // --- OAuth Handlers ---
 
+static void handle_oauth_redirect(struct mg_connection *c, struct mg_http_message *hm, const char *provider) {
+    char redirect_url[1024];
+
+    if (strcmp(provider, "github") == 0) {
+        const char *client_id = getenv("GITHUB_CLIENT_ID");
+        if (!client_id) {
+            snprintf(redirect_url, sizeof(redirect_url), "/api/auth/github/callback?code=mock_code");
+        } else {
+            snprintf(redirect_url, sizeof(redirect_url), 
+                "https://github.com/login/oauth/authorize?client_id=%s", 
+                client_id);
+        }
+    } else if (strcmp(provider, "google") == 0) {
+        const char *client_id = getenv("GOOGLE_CLIENT_ID");
+        if (!client_id) {
+            snprintf(redirect_url, sizeof(redirect_url), "/api/auth/google/callback?code=mock_code");
+        } else {
+            const char *backend_url = getenv("BACKEND_URL") ? getenv("BACKEND_URL") : "http://localhost:8080";
+            char redirect_uri[512];
+            snprintf(redirect_uri, sizeof(redirect_uri), "%s/api/auth/google/callback", backend_url);
+            
+            char encoded_redirect[1024];
+            mg_url_encode(redirect_uri, strlen(redirect_uri), encoded_redirect, sizeof(encoded_redirect));
+            
+            snprintf(redirect_url, sizeof(redirect_url), 
+                "https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code&scope=email%%20profile", 
+                client_id, encoded_redirect);
+        }
+    }
+
+    mg_http_reply(c, 302, "Location: %s\r\nAccess-Control-Allow-Origin: *\r\n\r\n", redirect_url);
+}
+
 static void handle_oauth_callback(struct mg_connection *c, struct mg_http_message *hm, const char *provider) {
     char code[256];
     if (mg_http_get_var(&hm->query, "code", code, sizeof(code)) <= 0) {
@@ -97,7 +130,11 @@ static void handle_oauth_callback(struct mg_connection *c, struct mg_http_messag
         const char *client_secret = getenv("GOOGLE_CLIENT_SECRET") ? getenv("GOOGLE_CLIENT_SECRET") : "mock_secret";
         
         if (getenv("GOOGLE_CLIENT_ID")) {
-            success = oauth_google_exchange_code(code, client_id, client_secret, "http://localhost:8080/api/auth/google/callback", access_token, sizeof(access_token));
+            const char *backend_url = getenv("BACKEND_URL") ? getenv("BACKEND_URL") : "http://localhost:8080";
+            char redirect_uri[512];
+            snprintf(redirect_uri, sizeof(redirect_uri), "%s/api/auth/google/callback", backend_url);
+            
+            success = oauth_google_exchange_code(code, client_id, client_secret, redirect_uri, access_token, sizeof(access_token));
             if (success) profile = oauth_google_get_user(access_token);
         } else {
             profile = malloc(sizeof(OAuthUserProfile));
@@ -115,12 +152,15 @@ static void handle_oauth_callback(struct mg_connection *c, struct mg_http_messag
     // Générer JWT (En production, vérifier/créer l'utilisateur dans SQLite)
     char *jwt = jwt_generate(atoi(profile->id), g_jwt_secret, 3600 * 24 * 7);
     
-    // Créer l'objet utilisateur encodé en base64/url pour le frontend (simplifié ici avec juste le token)
-    // Redirection vers le frontend
-    char redirect_url[512];
-    snprintf(redirect_url, sizeof(redirect_url), "http://localhost:3000/callback?token=%s&name=%s", jwt, profile->name ? profile->name : "User");
+    // Créer l'objet utilisateur encodé en base64/url pour le frontend
+    const char *frontend_url = getenv("FRONTEND_URL") ? getenv("FRONTEND_URL") : "http://localhost:3000";
+    char name_encoded[128];
+    mg_url_encode(profile->name ? profile->name : "User", strlen(profile->name ? profile->name : "User"), name_encoded, sizeof(name_encoded));
     
-    mg_http_reply(c, 302, "Location: %s\r\n\r\n", redirect_url);
+    char redirect_url[512];
+    snprintf(redirect_url, sizeof(redirect_url), "%s/callback?token=%s&name=%s", frontend_url, jwt, name_encoded);
+    
+    mg_http_reply(c, 302, "Location: %s\r\nAccess-Control-Allow-Origin: *\r\n\r\n", redirect_url);
 
     free(jwt);
     oauth_free_profile(profile);
@@ -175,6 +215,12 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data) {
         if (mg_http_match_uri(hm, "/api/auth/login")) {
             handle_auth_login(c, hm);
         } 
+        else if (mg_http_match_uri(hm, "/api/auth/github")) {
+            handle_oauth_redirect(c, hm, "github");
+        }
+        else if (mg_http_match_uri(hm, "/api/auth/google")) {
+            handle_oauth_redirect(c, hm, "google");
+        }
         else if (mg_http_match_uri(hm, "/api/auth/github/callback")) {
             handle_oauth_callback(c, hm, "github");
         }
