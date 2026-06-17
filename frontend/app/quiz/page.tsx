@@ -47,10 +47,32 @@ export default function QuizPage() {
         setDocuments(docs)
       } else {
         // Mock fallback
-        setDocuments([{ id: 1, title: 'Introduction au Droit.pdf', content: '', imported_at: new Date().toISOString() }])
+        setDocuments([{
+          id: 1,
+          user_id: 1,
+          title: 'Introduction au Droit.pdf',
+          file_path: '/docs/intro-droit.pdf',
+          content_text: '',
+          summary_ai: '',
+          tags: '',
+          page_count: 1,
+          file_size_bytes: 1024,
+          imported_at: new Date().toISOString()
+        }])
       }
     } catch {
-      setDocuments([{ id: 1, title: 'Mock Document.pdf', content: '', imported_at: new Date().toISOString() }])
+      setDocuments([{
+        id: 1,
+        user_id: 1,
+        title: 'Mock Document.pdf',
+        file_path: '/docs/mock.pdf',
+        content_text: '',
+        summary_ai: '',
+        tags: '',
+        page_count: 1,
+        file_size_bytes: 1024,
+        imported_at: new Date().toISOString()
+      }])
     }
   }
 
@@ -77,7 +99,7 @@ export default function QuizPage() {
     } catch {
       // Mock fallback
       setTimeout(() => {
-        setSession({ id: 1, user_id: 1, mode, difficulty, score: 0, created_at: new Date().toISOString() })
+        setSession({ id: 1, user_id: 1, mode, difficulty, question_count: questionCount, created_at: new Date().toISOString() })
         setCurrentIndex(0)
         setCurrentQuestion(MOCK_QUESTION)
         setLoading(false)

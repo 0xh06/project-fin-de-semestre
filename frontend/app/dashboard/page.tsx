@@ -23,6 +23,7 @@ import { DashboardStats } from '@/types'
 import Link from 'next/link'
 
 const MOCK_STATS: DashboardStats = {
+  user_id: 1,
   xp_total: 1450,
   level: 4,
   xp_to_next_level: 550,
@@ -31,8 +32,11 @@ const MOCK_STATS: DashboardStats = {
   documents_count: 8,
   flashcards_total: 142,
   flashcards_mastered: 98,
+  quizzes_completed: 5,
+  perfect_quizzes: 2,
   study_time_minutes: 847,
   weekly_xp: [120, 85, 200, 150, 95, 180, 75],
+  badges_count: 3,
 }
 
 export default function DashboardPage() {

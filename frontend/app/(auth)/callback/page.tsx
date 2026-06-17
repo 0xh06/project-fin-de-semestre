@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BrainCircuit } from 'lucide-react'
 
-export default function OAuthCallbackPage() {
+function CallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -35,6 +35,10 @@ export default function OAuthCallbackPage() {
     }
   }, [router, searchParams])
 
+  return null
+}
+
+export default function OAuthCallbackPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center px-4 overflow-hidden">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
@@ -49,6 +53,10 @@ export default function OAuthCallbackPage() {
           <div className="h-6 w-6 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       </div>
+      
+      <Suspense fallback={null}>
+        <CallbackContent />
+      </Suspense>
     </div>
   )
 }

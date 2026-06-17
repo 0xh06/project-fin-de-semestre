@@ -9,9 +9,9 @@ import { Flashcard } from '@/types'
 
 // Mock data fallback
 const MOCK_FLASHCARDS: Flashcard[] = [
-  { id: 1, document_id: 1, front: "Qu'est-ce que le 'Spaced Repetition System' (SRS) ?", back: "Une méthode d'apprentissage basée sur des révisions à intervalles réguliers et croissants, optimisée pour combattre la courbe d'oubli d'Ebbinghaus.", next_review: new Date().toISOString(), interval: 0, ease_factor: 2.5, repetitions: 0, created_at: new Date().toISOString() },
-  { id: 2, document_id: 1, front: "Quel est l'avantage principal du Glassmorphism en UI design ?", back: "Il crée de la profondeur et une hiérarchie visuelle subtile grâce à un effet de verre dépoli (flou d'arrière-plan), rendant l'interface moderne sans surcharger l'utilisateur.", next_review: new Date().toISOString(), interval: 0, ease_factor: 2.5, repetitions: 0, created_at: new Date().toISOString() },
-  { id: 3, document_id: 2, front: "Comment fonctionne l'effet d'éviction en économie ?", back: "L'État emprunte massivement, ce qui fait monter les taux d'intérêt, décourageant ainsi l'investissement privé.", next_review: new Date().toISOString(), interval: 0, ease_factor: 2.5, repetitions: 0, created_at: new Date().toISOString() },
+  { id: 1, deck_id: 1, front: "Qu'est-ce que le 'Spaced Repetition System' (SRS) ?", back: "Une méthode d'apprentissage basée sur des révisions à intervalles réguliers et croissants, optimisée pour combattre la courbe d'oubli d'Ebbinghaus.", next_review: new Date().toISOString(), interval_days: 0, repetitions: 0, difficulty: 2 },
+  { id: 2, deck_id: 1, front: "Quel est l'avantage principal du Glassmorphism en UI design ?", back: "Il crée de la profondeur et une hiérarchie visuelle subtile grâce à un effet de verre dépoli (flou d'arrière-plan), rendant l'interface moderne sans surcharger l'utilisateur.", next_review: new Date().toISOString(), interval_days: 0, repetitions: 0, difficulty: 2 },
+  { id: 3, deck_id: 2, front: "Comment fonctionne l'effet d'éviction en économie ?", back: "L'État emprunte massivement, ce qui fait monter les taux d'intérêt, décourageant ainsi l'investissement privé.", next_review: new Date().toISOString(), interval_days: 0, repetitions: 0, difficulty: 2 },
 ]
 
 export default function FlashcardsPage() {
