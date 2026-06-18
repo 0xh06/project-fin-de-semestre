@@ -297,6 +297,18 @@ static void reply_error(struct mg_connection *c, int status_code, const char *me
     cJSON_Delete(obj);
 }
 
+static void reply_error_code(struct mg_connection *c, int status_code, const char *message, const char *code) {
+    cJSON *obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(obj, "error", message);
+    if (code && code[0] != '\0') {
+        cJSON_AddStringToObject(obj, "code", code);
+    }
+    char *json = cJSON_PrintUnformatted(obj);
+    reply_json(c, status_code, json);
+    free(json);
+    cJSON_Delete(obj);
+}
+
 static void reply_auth_success(struct mg_connection *c, const HttpUser *user) {
     char *jwt = jwt_generate(user->id, g_jwt_secret, AUTH_TOKEN_TTL_SECONDS);
     char *json = NULL;
@@ -346,23 +358,23 @@ static void handle_auth_login(struct mg_connection *c, struct mg_http_message *h
     char password_hash[65];
 
     if (!method_is(hm, "POST")) {
-        reply_error(c, 405, "Méthode non autorisée.");
+        reply_error_code(c, 405, "Méthode non autorisée.", "invalid_request");
         return;
     }
 
     if (!parse_auth_body(hm, email, sizeof(email), NULL, 0, password, sizeof(password))) {
-        reply_error(c, 400, "Requête invalide.");
+        reply_error_code(c, 400, "Requête invalide.", "invalid_request");
         return;
     }
 
     if (!db_find_user_by_email(email, &user)) {
-        reply_error(c, 401, "Email ou mot de passe incorrect.");
+        reply_error_code(c, 401, "Email ou mot de passe incorrect.", "invalid_credentials");
         return;
     }
 
     if (!hash_password_sha256(password, password_hash) ||
         strcmp(user.password_hash, password_hash) != 0) {
-        reply_error(c, 401, "Email ou mot de passe incorrect.");
+        reply_error_code(c, 401, "Email ou mot de passe incorrect.", "invalid_credentials");
         return;
     }
 
@@ -379,29 +391,39 @@ static void handle_auth_register(struct mg_connection *c, struct mg_http_message
     char password_hash[65];
 
     if (!method_is(hm, "POST")) {
-        reply_error(c, 405, "Méthode non autorisée.");
+        reply_error_code(c, 405, "Méthode non autorisée.", "invalid_request");
         return;
     }
 
     if (!parse_auth_body(hm, email, sizeof(email), username, sizeof(username), password, sizeof(password))) {
-        reply_error(c, 400, "Requête invalide.");
+        reply_error_code(c, 400, "Requête invalide.", "invalid_request");
         return;
     }
 
-    if (!email_looks_valid(email) || username[0] == '\0' || strlen(password) < 8) {
-        reply_error(c, 400, "Email, nom d'utilisateur ou mot de passe invalide.");
+    if (!email_looks_valid(email)) {
+        reply_error_code(c, 400, "L'adresse email n'est pas valide.", "invalid_email");
+        return;
+    }
+
+    if (username[0] == '\0') {
+        reply_error_code(c, 400, "Le nom d'utilisateur est requis.", "invalid_username");
+        return;
+    }
+
+    if (strlen(password) < 8) {
+        reply_error_code(c, 400, "Le mot de passe doit contenir au moins 8 caractères.", "invalid_password");
         return;
     }
 
     if (db_find_user_by_email(email, &existing_user)) {
-        reply_error(c, 409, "Un compte existe déjà avec cet email.");
+        reply_error_code(c, 409, "Un compte existe déjà avec cet email.", "email_already_exists");
         return;
     }
 
     if (!hash_password_sha256(password, password_hash) ||
         !db_create_user(email, password_hash, username, "password", &user_id) ||
         !db_find_user_by_id(user_id, &created_user)) {
-        reply_error(c, 500, "Impossible de créer le compte.");
+        reply_error_code(c, 500, "Impossible de créer le compte.", "server_error");
         return;
     }
 
@@ -415,17 +437,17 @@ static void handle_auth_me(struct mg_connection *c, struct mg_http_message *hm) 
     char *json = NULL;
 
     if (!method_is(hm, "GET")) {
-        reply_error(c, 405, "Méthode non autorisée.");
+        reply_error_code(c, 405, "Méthode non autorisée.", "invalid_request");
         return;
     }
 
     if (!verify_auth(hm, &user_id)) {
-        reply_error(c, 401, "Non autorisé.");
+        reply_error_code(c, 401, "Non autorisé.", "unauthorized");
         return;
     }
 
     if (!db_find_user_by_id(user_id, &user)) {
-        reply_error(c, 404, "Utilisateur introuvable.");
+        reply_error_code(c, 404, "Utilisateur introuvable.", "unauthorized");
         return;
     }
 

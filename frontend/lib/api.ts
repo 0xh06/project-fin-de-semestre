@@ -66,17 +66,17 @@ async function request<T>(
   if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = errorText || 'Request failed';
+    let errorCode: string | undefined;
 
     try {
       const parsed = JSON.parse(errorText);
       if (parsed?.error && typeof parsed.error === 'string') {
         errorMessage = parsed.error;
       }
-      const errorCode = typeof parsed?.code === 'string' ? parsed.code : undefined;
-      throw new ApiError(response.status, errorMessage, errorCode);
+      errorCode = typeof parsed?.code === 'string' ? parsed.code : undefined;
     } catch {}
 
-    throw new ApiError(response.status, errorMessage);
+    throw new ApiError(response.status, errorMessage, errorCode);
   }
 
   return response.json();

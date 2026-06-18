@@ -9,6 +9,10 @@ import { beginOAuth, getAuthErrorMessage } from '@/lib/oauth'
 import { BrainCircuit, ArrowRight, Eye, EyeOff, CheckCircle2, Github } from 'lucide-react'
 import Link from 'next/link'
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
 export default function RegisterPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
@@ -32,11 +36,33 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedUsername = username.trim()
+
+    if (!normalizedUsername) {
+      setError('Le nom d’utilisateur est requis.')
+      return
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      setError('L’adresse email n’est pas valide.')
+      return
+    }
+
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caractères.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
     try {
-      const response = await authApi.register({ email, username, password })
+      const response = await authApi.register({
+        email: normalizedEmail,
+        username: normalizedUsername,
+        password,
+      })
       localStorage.setItem('token', response.token)
       localStorage.setItem('user', JSON.stringify(response.user))
       router.push('/dashboard')
@@ -96,7 +122,10 @@ export default function RegisterPage() {
                 type="text"
                 placeholder="votre_pseudo"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value)
+                  if (error) setError('')
+                }}
                 required
                 className="h-11 bg-secondary/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl text-sm"
               />
@@ -110,7 +139,10 @@ export default function RegisterPage() {
                 type="email"
                 placeholder="votre@email.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (error) setError('')
+                }}
                 required
                 className="h-11 bg-secondary/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl text-sm"
               />
@@ -125,7 +157,10 @@ export default function RegisterPage() {
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Minimum 8 caractères"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (error) setError('')
+                  }}
                   required
                   minLength={8}
                   className="h-11 bg-secondary/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 rounded-xl text-sm pr-10"
