@@ -15,7 +15,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  
+
   // Form states
   const [username, setUsername] = useState('Étudiant')
   const [email, setEmail] = useState('user@smartstudy.ai')
@@ -28,13 +28,16 @@ export default function SettingsPage() {
   }, [])
 
   const loadUser = async () => {
+    // Load saved Gemini key from localStorage
+    const savedKey = localStorage.getItem('gemini_api_key')
+    if (savedKey) setApiKey(savedKey)
+
     try {
       const userData = await authApi.getCurrentUser()
       setUser(userData)
       if (userData.username) setUsername(userData.username)
       if (userData.email) setEmail(userData.email)
     } catch {
-      // Offline fallback: load from localStorage
       const stored = localStorage.getItem('user')
       if (stored) {
         try {
@@ -55,10 +58,9 @@ export default function SettingsPage() {
     setSaving(true)
     setSaveSuccess(false)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800))
-      
-      // Update local storage if needed
+      await new Promise(resolve => setTimeout(resolve, 600))
+
+      // Save username
       const stored = localStorage.getItem('user')
       if (stored) {
         try {
@@ -67,7 +69,14 @@ export default function SettingsPage() {
           localStorage.setItem('user', JSON.stringify(u))
         } catch {}
       }
-      
+
+      // Save Gemini API key
+      if (apiKey.trim()) {
+        localStorage.setItem('gemini_api_key', apiKey.trim())
+      } else {
+        localStorage.removeItem('gemini_api_key')
+      }
+
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch (err) {
@@ -94,7 +103,7 @@ export default function SettingsPage() {
   return (
     <div className="p-6 lg:p-8 h-full overflow-y-auto animate-fade-in relative">
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
-      
+
       <div className="max-w-3xl mx-auto space-y-8 relative z-10">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 rounded-xl bg-primary/10">
@@ -195,16 +204,16 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-5 pt-6">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gemini API Key (Optionnel)</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gemini API Key</label>
               <Input
                 type="password"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                placeholder="AIzaSy..."
                 className="h-11 bg-secondary/30 border-border/40 focus:border-emerald-500/50 focus:ring-emerald-500/20 rounded-xl font-mono"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
-                Laissez vide pour utiliser l'IA par défaut du serveur SmartStudy. Ajoutez votre clé pour un accès sans limites.
+                {apiKey ? '✅ Clé sauvegardie — le Chat IA utilisera Gemini directement, même sans serveur backend.' : 'Ajoutez votre clé Gemini pour activer le Chat IA sans serveur. Obtenez-la sur aistudio.google.com.'}
               </p>
             </div>
           </CardContent>
@@ -248,8 +257,8 @@ export default function SettingsPage() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 pb-12">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleLogout}
             className="w-full sm:w-auto h-11 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors gap-2"
           >
@@ -264,9 +273,9 @@ export default function SettingsPage() {
                 Sauvegardé
               </span>
             )}
-            <Button 
-              onClick={handleSave} 
-              disabled={saving} 
+            <Button
+              onClick={handleSave}
+              disabled={saving}
               className="w-full sm:w-auto h-11 px-8 gradient-primary text-white font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all"
             >
               {saving ? 'Sauvegarde...' : 'Sauvegarder les modifications'}

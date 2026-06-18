@@ -4,9 +4,65 @@ import { useEffect, useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { MessageSquare, Send, FileText, X, Sparkles, Bot, User } from 'lucide-react'
+import { MessageSquare, Send, FileText, X, Sparkles, Bot, User, Zap, Settings } from 'lucide-react'
 import { chatApi, documentsApi } from '@/lib/api'
 import { Document, ChatMessage } from '@/types'
+import Link from 'next/link'
+
+// ─── Gemini Direct API ──────────────────────────────────────────────────────
+
+async function callGeminiDirect(
+  apiKey: string,
+  history: ChatMessage[],
+  userMessage: string
+): Promise<string> {
+  const SYSTEM_PROMPT = `Tu es SmartStudy AI, un assistant pédagogique intelligent et bienveillant.
+Tu aides les étudiants à comprendre leurs cours, créer des flashcards, préparer des quiz et organiser leurs révisions.
+Réponds toujours en français, de façon claire, structurée et pédagogique.
+Utilise du **markdown** pour structurer tes réponses (titres, listes, gras).
+Si on te demande des flashcards, génère-les au format Q/R numéroté.
+Si on te demande un quiz, génère des questions avec les réponses correctes expliquées.`
+
+  // Build conversation history for Gemini (alternating user/model)
+  const contents: { role: string; parts: { text: string }[] }[] = []
+  for (const msg of history) {
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      contents.push({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }],
+      })
+    }
+  }
+  contents.push({ role: 'user', parts: [{ text: userMessage }] })
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+        },
+      }),
+    }
+  )
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err?.error?.message || `Gemini error ${res.status}`)
+  }
+
+  const data = await res.json()
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+  if (!text) throw new Error('Réponse vide de Gemini')
+  return text
+}
+
+// ─── Offline fallback ────────────────────────────────────────────────────────
 
 function generateOfflineReply(message: string): string {
   const m = message.toLowerCase()
@@ -50,11 +106,16 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [geminiKey, setGeminiKey] = useState<string | null>(null)
+  const [geminiError, setGeminiError] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     loadDocuments()
     loadHistory()
+    // Load Gemini key saved in settings
+    const key = localStorage.getItem('gemini_api_key')
+    if (key) setGeminiKey(key)
   }, [])
 
   useEffect(() => {
@@ -125,19 +186,50 @@ export default function ChatPage() {
       setMessages(prev => [...prev, assistantMsg])
       setLoading(false)
     } catch {
-      const reply = generateOfflineReply(userMessage)
-      const mockMsg: ChatMessage = {
-        id: Date.now() + 1,
-        session_id: 0,
-        role: 'assistant',
-        content: reply,
-        tokens: 0,
-        created_at: new Date().toISOString(),
+      // Backend offline — try Gemini direct if key is available
+      if (geminiKey) {
+        try {
+          setGeminiError('')
+          const text = await callGeminiDirect(geminiKey, messages, userMessage)
+          const geminiMsg: ChatMessage = {
+            id: Date.now() + 1,
+            session_id: 0,
+            role: 'assistant',
+            content: text,
+            tokens: 0,
+            created_at: new Date().toISOString(),
+          }
+          setMessages(prev => [...prev, geminiMsg])
+        } catch (geminiErr: any) {
+          setGeminiError(geminiErr?.message || 'Erreur Gemini')
+          const fallbackMsg: ChatMessage = {
+            id: Date.now() + 1,
+            session_id: 0,
+            role: 'assistant',
+            content: `⚠️ Erreur Gemini : ${geminiErr?.message || 'Clé invalide ou quota dépassé'}\n\nVérifie ta clé dans les [Paramètres](/settings).`,
+            tokens: 0,
+            created_at: new Date().toISOString(),
+          }
+          setMessages(prev => [...prev, fallbackMsg])
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        // No Gemini key — use keyword-based offline reply
+        const reply = generateOfflineReply(userMessage)
+        const mockMsg: ChatMessage = {
+          id: Date.now() + 1,
+          session_id: 0,
+          role: 'assistant',
+          content: reply,
+          tokens: 0,
+          created_at: new Date().toISOString(),
+        }
+        setTimeout(() => {
+          setMessages(prev => [...prev, mockMsg])
+          setLoading(false)
+        }, 700 + Math.random() * 500)
       }
-      setTimeout(() => {
-        setMessages(prev => [...prev, mockMsg])
-        setLoading(false)
-      }, 700 + Math.random() * 500)
     }
   }
 
@@ -158,17 +250,38 @@ export default function ChatPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Chat IA</h1>
-            <p className="text-xs text-muted-foreground">Votre tuteur intelligent personnel</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              {geminiKey ? (
+                <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-400">
+                  <Zap className="h-3 w-3" />
+                  Gemini 2.0 Flash actif
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Votre tuteur intelligent personnel
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={clearHistory}
-          disabled={loadingHistory || messages.length === 0}
-          className="text-xs h-8 border-border/50 hover:bg-destructive/10 hover:text-red-400 hover:border-red-500/30 transition-all"
-        >
-          Effacer l'historique
-        </Button>
+        <div className="flex items-center gap-2">
+          {!geminiKey && (
+            <Link href="/settings">
+              <Button variant="outline" className="text-xs h-8 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 gap-1.5">
+                <Settings className="h-3.5 w-3.5" />
+                Ajouter clé Gemini
+              </Button>
+            </Link>
+          )}
+          <Button
+            variant="outline"
+            onClick={clearHistory}
+            disabled={loadingHistory || messages.length === 0}
+            className="text-xs h-8 border-border/50 hover:bg-destructive/10 hover:text-red-400 hover:border-red-500/30 transition-all"
+          >
+            Effacer l'historique
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-4 flex-1 overflow-hidden">
