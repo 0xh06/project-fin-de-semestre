@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
   title: 'SmartStudy AI — Révisez intelligemment avec l\'IA',
   description: 'Plateforme d\'apprentissage intelligente propulsée par l\'IA. Flashcards, quiz adaptatifs, chat IA, mindmaps et bien plus.',
   keywords: 'étude, IA, flashcards, quiz, apprentissage, révision, étudiants',

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { authApi } from '@/lib/api'
 import { beginOAuth, getAuthErrorMessage } from '@/lib/oauth'
+import { isSupabaseConfigured, supabaseAuth } from '@/lib/supabase'
 import { BrainCircuit, ArrowRight, Eye, EyeOff, CheckCircle2, Github, Sparkles, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 
@@ -71,7 +72,20 @@ export default function RegisterPage() {
     } catch (err: any) {
       if (err?.code === 'api_unreachable') {
         setIsOffline(true)
-        setError(getAuthErrorMessage(err?.code) || err.message || 'Serveur indisponible')
+
+        if (isSupabaseConfigured()) {
+          try {
+            const response = await supabaseAuth.signUp(normalizedEmail, password, normalizedUsername)
+            localStorage.setItem('token', response.token)
+            localStorage.setItem('user', JSON.stringify(response.user))
+            router.push('/dashboard')
+            return
+          } catch (supabaseErr: any) {
+            setError(`Backend indisponible. Supabase a répondu : ${supabaseErr?.message || 'inscription impossible'}`)
+          }
+        } else {
+          setError('Backend indisponible et Supabase non configuré. Configure Supabase dans Paramètres ou continue en mode démo.')
+        }
       } else {
         setError(getAuthErrorMessage(err?.code) || err.message || 'Erreur d\'inscription')
       }

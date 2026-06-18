@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Settings, User, Key, Palette, Bell, LogOut, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Settings, User, Key, Palette, Bell, LogOut, CheckCircle2, AlertCircle, Database, Wifi } from 'lucide-react'
 import { authApi } from '@/lib/api'
+import { getSupabaseConfig, saveSupabaseConfig, supabaseAuth } from '@/lib/supabase'
 import { User as UserType } from '@/types'
 import { useRouter } from 'next/navigation'
 
@@ -15,11 +16,16 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [supabaseTesting, setSupabaseTesting] = useState(false)
+  const [supabaseStatus, setSupabaseStatus] = useState<'idle' | 'ok' | 'error'>('idle')
+  const [supabaseMessage, setSupabaseMessage] = useState('')
 
   // Form states
   const [username, setUsername] = useState('Étudiant')
   const [email, setEmail] = useState('user@smartstudy.ai')
   const [apiKey, setApiKey] = useState('')
+  const [supabaseUrl, setSupabaseUrl] = useState('')
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState('')
   const [theme, setTheme] = useState('dark')
   const [notifications, setNotifications] = useState(true)
 
@@ -28,9 +34,17 @@ export default function SettingsPage() {
   }, [])
 
   const loadUser = async () => {
-    // Load saved Gemini key from localStorage
+    // Load saved Gemini key and Supabase config from localStorage/env
     const savedKey = localStorage.getItem('gemini_api_key')
     if (savedKey) setApiKey(savedKey)
+
+    const supabase = getSupabaseConfig()
+    if (supabase) {
+      setSupabaseUrl(supabase.url)
+      setSupabaseAnonKey(supabase.anonKey)
+      setSupabaseStatus('ok')
+      setSupabaseMessage('Configuration Supabase détectée.')
+    }
 
     try {
       const userData = await authApi.getCurrentUser()
@@ -77,12 +91,35 @@ export default function SettingsPage() {
         localStorage.removeItem('gemini_api_key')
       }
 
+      // Save Supabase public config (anon key only, never service_role)
+      saveSupabaseConfig(supabaseUrl, supabaseAnonKey)
+      setSupabaseStatus(supabaseUrl.trim() && supabaseAnonKey.trim() ? 'ok' : 'idle')
+      setSupabaseMessage(supabaseUrl.trim() && supabaseAnonKey.trim() ? 'Configuration Supabase sauvegardée.' : '')
+
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch (err) {
       console.error('Failed to save settings:', err)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleTestSupabase = async () => {
+    setSupabaseTesting(true)
+    setSupabaseStatus('idle')
+    setSupabaseMessage('')
+    saveSupabaseConfig(supabaseUrl, supabaseAnonKey)
+
+    try {
+      await supabaseAuth.testConnection()
+      setSupabaseStatus('ok')
+      setSupabaseMessage('Connexion Supabase réussie. Auth Supabase active si le backend est offline.')
+    } catch (err: any) {
+      setSupabaseStatus('error')
+      setSupabaseMessage(err?.message || 'Connexion Supabase impossible.')
+    } finally {
+      setSupabaseTesting(false)
     }
   }
 
@@ -213,9 +250,83 @@ export default function SettingsPage() {
                 className="h-11 bg-secondary/30 border-border/40 focus:border-emerald-500/50 focus:ring-emerald-500/20 rounded-xl font-mono"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
-                {apiKey ? '✅ Clé sauvegardie — le Chat IA utilisera Gemini directement, même sans serveur backend.' : 'Ajoutez votre clé Gemini pour activer le Chat IA sans serveur. Obtenez-la sur aistudio.google.com.'}
+                {apiKey ? '✅ Clé sauvegardée — le Chat IA utilisera Gemini directement, même sans serveur backend.' : 'Ajoutez votre clé Gemini pour activer le Chat IA sans serveur. Obtenez-la sur aistudio.google.com.'}
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Supabase Section */}
+        <Card className="glass border-border/50 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <CardHeader className="border-b border-border/30 bg-secondary/20 pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Database className="h-5 w-5 text-cyan-400" />
+              Supabase
+            </CardTitle>
+            <CardDescription>
+              Connexion directe si le backend C n'est pas disponible
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Project URL</label>
+              <Input
+                value={supabaseUrl}
+                onChange={(e) => {
+                  setSupabaseUrl(e.target.value)
+                  setSupabaseStatus('idle')
+                  setSupabaseMessage('')
+                }}
+                placeholder="https://xxxxx.supabase.co"
+                className="h-11 bg-secondary/30 border-border/40 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl font-mono text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Anon public key</label>
+              <Input
+                type="password"
+                value={supabaseAnonKey}
+                onChange={(e) => {
+                  setSupabaseAnonKey(e.target.value)
+                  setSupabaseStatus('idle')
+                  setSupabaseMessage('')
+                }}
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
+                className="h-11 bg-secondary/30 border-border/40 focus:border-cyan-500/50 focus:ring-cyan-500/20 rounded-xl font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Utilise uniquement la clé <span className="font-semibold text-cyan-400">anon public</span>. Ne mets jamais la clé <span className="font-semibold text-red-400">service_role</span> dans le frontend.
+              </p>
+            </div>
+
+            {supabaseMessage && (
+              <div className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 text-sm ${
+                supabaseStatus === 'ok'
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                  : supabaseStatus === 'error'
+                    ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                    : 'border-border/40 bg-secondary/20 text-muted-foreground'
+              }`}>
+                {supabaseStatus === 'ok' ? <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" /> : <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+                <span>{supabaseMessage}</span>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleTestSupabase}
+              disabled={supabaseTesting || !supabaseUrl.trim() || !supabaseAnonKey.trim()}
+              className="w-full h-11 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 gap-2"
+            >
+              {supabaseTesting ? (
+                <div className="h-4 w-4 border-2 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin" />
+              ) : (
+                <Wifi className="h-4 w-4" />
+              )}
+              Tester Supabase
+            </Button>
           </CardContent>
         </Card>
 
