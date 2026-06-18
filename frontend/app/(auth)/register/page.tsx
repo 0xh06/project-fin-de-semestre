@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { authApi } from '@/lib/api'
 import { beginOAuth, getAuthErrorMessage } from '@/lib/oauth'
-import { BrainCircuit, ArrowRight, Eye, EyeOff, CheckCircle2, Github } from 'lucide-react'
+import { BrainCircuit, ArrowRight, Eye, EyeOff, CheckCircle2, Github, Sparkles, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 
 function isValidEmail(value: string) {
@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [urlError, setUrlError] = useState('')
+  const [isOffline, setIsOffline] = useState(false)
   const displayError = error || urlError
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function RegisterPage() {
 
     setLoading(true)
     setError('')
+    setIsOffline(false)
 
     try {
       const response = await authApi.register({
@@ -67,10 +69,27 @@ export default function RegisterPage() {
       localStorage.setItem('user', JSON.stringify(response.user))
       router.push('/dashboard')
     } catch (err: any) {
-      setError(getAuthErrorMessage(err?.code) || err.message || 'Erreur d\'inscription')
+      if (err?.code === 'api_unreachable') {
+        setIsOffline(true)
+        setError(getAuthErrorMessage(err?.code) || err.message || 'Serveur indisponible')
+      } else {
+        setError(getAuthErrorMessage(err?.code) || err.message || 'Erreur d\'inscription')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDemoMode = () => {
+    const demoUser = {
+      id: 1,
+      username: username.trim() || 'Étudiant',
+      email: email.trim() || 'demo@smartstudy.ai',
+      created_at: new Date().toISOString(),
+    }
+    localStorage.setItem('token', 'demo_token')
+    localStorage.setItem('user', JSON.stringify(demoUser))
+    router.push('/dashboard')
   }
 
   const handleOAuthRegister = async (provider: 'github' | 'google') => {
@@ -81,6 +100,7 @@ export default function RegisterPage() {
     try {
       await beginOAuth(provider, 'register')
     } catch (err: any) {
+      if (err?.code === 'api_unreachable') setIsOffline(true)
       setError(getAuthErrorMessage(err?.code) || err?.message || 'Inscription OAuth impossible')
       setOauthLoading(null)
     }
@@ -196,9 +216,21 @@ export default function RegisterPage() {
             </div>
 
             {displayError && (
-              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 animate-slide-up">
-                <span className="text-red-400">⚠</span>
-                {displayError}
+              <div className="space-y-3 animate-slide-up">
+                <div className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5">
+                  <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{displayError}</span>
+                </div>
+                {isOffline && (
+                  <button
+                    type="button"
+                    onClick={handleDemoMode}
+                    className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 transition-all duration-200 text-sm font-semibold"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Continuer en mode démo
+                  </button>
+                )}
               </div>
             )}
 

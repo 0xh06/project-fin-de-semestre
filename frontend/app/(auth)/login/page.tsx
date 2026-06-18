@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { authApi } from '@/lib/api'
 import { beginOAuth, getAuthErrorMessage } from '@/lib/oauth'
-import { BrainCircuit, ArrowRight, Eye, EyeOff, Sparkles, Github } from 'lucide-react'
+import { BrainCircuit, ArrowRight, Eye, EyeOff, Sparkles, Github, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [urlError, setUrlError] = useState('')
+  const [isOffline, setIsOffline] = useState(false)
   const displayError = error || urlError
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setIsOffline(false)
 
     try {
       const response = await authApi.login({ email, password })
@@ -36,10 +38,27 @@ export default function LoginPage() {
       localStorage.setItem('user', JSON.stringify(response.user))
       router.push('/dashboard')
     } catch (err: any) {
-      setError(getAuthErrorMessage(err?.code) || err.message || 'Erreur de connexion')
+      if (err?.code === 'api_unreachable') {
+        setIsOffline(true)
+        setError(getAuthErrorMessage(err?.code) || err.message || 'Serveur indisponible')
+      } else {
+        setError(getAuthErrorMessage(err?.code) || err.message || 'Erreur de connexion')
+      }
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDemoMode = () => {
+    const demoUser = {
+      id: 1,
+      username: 'Étudiant',
+      email: email.trim() || 'demo@smartstudy.ai',
+      created_at: new Date().toISOString(),
+    }
+    localStorage.setItem('token', 'demo_token')
+    localStorage.setItem('user', JSON.stringify(demoUser))
+    router.push('/dashboard')
   }
 
   const handleOAuthLogin = async (provider: 'github' | 'google') => {
@@ -50,6 +69,7 @@ export default function LoginPage() {
     try {
       await beginOAuth(provider, 'login')
     } catch (err: any) {
+      if (err?.code === 'api_unreachable') setIsOffline(true)
       setError(getAuthErrorMessage(err?.code) || err?.message || 'Connexion OAuth impossible')
       setOauthLoading(null)
     }
@@ -60,7 +80,7 @@ export default function LoginPage() {
       {/* Background effects */}
       <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-primary/8 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[350px] h-[350px] bg-purple-500/5 rounded-full blur-[120px] pointer-events-none" />
-      
+
       {/* Back to home */}
       <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <BrainCircuit className="h-5 w-5 text-primary" />
@@ -126,9 +146,21 @@ export default function LoginPage() {
             </div>
 
             {displayError && (
-              <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 animate-slide-up">
-                <span className="text-red-400">⚠</span>
-                {displayError}
+              <div className="space-y-3 animate-slide-up">
+                <div className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5">
+                  <WifiOff className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{displayError}</span>
+                </div>
+                {isOffline && (
+                  <button
+                    type="button"
+                    onClick={handleDemoMode}
+                    className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 transition-all duration-200 text-sm font-semibold"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Continuer en mode démo
+                  </button>
+                )}
               </div>
             )}
 
