@@ -1,0 +1,198 @@
+// Prisma schema for SmartStudy AI on Supabase Postgres
+//
+// Supabase recommendation:
+// - DATABASE_URL: pooled connection string for runtime (port 6543 / pgbouncer)
+// - DIRECT_URL: direct connection string for migrations (port 5432)
+//
+// Never expose these URLs in the frontend. Use them only on the server/CLI.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           BigInt   @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  username     String?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  settingsJson Json     @default("{}") @map("settings_json")
+
+  oauthAccounts OAuthAccount[]
+  documents     Document[]
+  flashcards    Flashcard[]
+  quizSessions  QuizSession[]
+  chatMessages  ChatMessage[]
+  studySessions StudySession[]
+  mindMaps      MindMap[]
+
+  @@map("users")
+}
+
+model OAuthAccount {
+  id             BigInt   @id @default(autoincrement())
+  userId         BigInt   @map("user_id")
+  provider       String
+  providerUserId String   @map("provider_user_id")
+  providerEmail  String?  @map("provider_email")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([provider, providerUserId])
+  @@map("oauth_accounts")
+}
+
+model Document {
+  id            BigInt   @id @default(autoincrement())
+  userId        BigInt   @map("user_id")
+  filename      String
+  title         String?
+  filePath      String?  @map("file_path")
+  contentText   String?  @map("content_text")
+  summaryAi     String?  @map("summary_ai")
+  tags          String?
+  pageCount     Int?     @map("page_count")
+  fileSizeBytes Int?     @map("file_size_bytes")
+  uploadedAt    DateTime @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcards Flashcard[]
+  mindMaps   MindMap[]
+
+  @@index([userId])
+  @@index([uploadedAt])
+  @@map("documents")
+}
+
+model Flashcard {
+  id           BigInt   @id @default(autoincrement())
+  documentId   BigInt?  @map("document_id")
+  userId       BigInt   @map("user_id")
+  front        String
+  back         String
+  difficulty   Float    @default(2.5)
+  nextReview   DateTime @default(now()) @map("next_review") @db.Timestamptz(6)
+  intervalDays Int      @default(1) @map("interval_days")
+  repetitions  Int      @default(0)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document    Document?    @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  quizAnswers QuizAnswer[]
+
+  @@index([userId])
+  @@index([documentId])
+  @@index([nextReview])
+  @@index([userId, nextReview])
+  @@map("flashcards")
+}
+
+model QuizSession {
+  id         BigInt     @id @default(autoincrement())
+  userId     BigInt     @map("user_id")
+  mode       QuizMode   @default(multiple_choice)
+  difficulty Difficulty @default(auto)
+  score      Float      @default(0)
+  total      Int        @default(0)
+  startedAt  DateTime   @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt DateTime?  @map("finished_at") @db.Timestamptz(6)
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers QuizAnswer[]
+
+  @@index([userId])
+  @@index([userId, startedAt])
+  @@map("quiz_sessions")
+}
+
+model QuizAnswer {
+  id            BigInt  @id @default(autoincrement())
+  sessionId     BigInt  @map("session_id")
+  flashcardId   BigInt? @map("flashcard_id")
+  question      String?
+  userAnswer    String? @map("user_answer")
+  correctAnswer String? @map("correct_answer")
+  isCorrect     Boolean @default(false) @map("is_correct")
+  explanation   String?
+
+  session   QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  flashcard Flashcard?  @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([flashcardId])
+  @@map("quiz_answers")
+}
+
+model ChatMessage {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt   @map("user_id")
+  role       ChatRole
+  content    String
+  modelUsed  String?  @map("model_used")
+  tokensUsed Int      @default(0) @map("tokens_used")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("chat_messages")
+}
+
+model StudySession {
+  id              BigInt   @id @default(autoincrement())
+  userId          BigInt   @map("user_id")
+  durationSeconds Int      @default(0) @map("duration_seconds")
+  xpEarned        Int      @default(0) @map("xp_earned")
+  streakDay       Int      @default(1) @map("streak_day")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("study_sessions")
+}
+
+model MindMap {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt   @map("user_id")
+  documentId BigInt?  @map("document_id")
+  title      String?
+  nodesJson  Json     @default("{}") @map("nodes_json")
+  edgesJson  Json     @default("[]") @map("edges_json")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document? @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([documentId])
+  @@map("mind_maps")
+}
+
+enum ChatRole {
+  user
+  assistant
+  system
+}
+
+enum QuizMode {
+  multiple_choice
+  true_false
+  open_ended
+}
+
+enum Difficulty {
+  auto
+  easy
+  medium
+  hard
+}

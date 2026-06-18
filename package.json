@@ -10,6 +10,17 @@
     "dev:web": "npm run dev --workspace=frontend",
     "dev:mobile": "npm run dev --workspace=mobile",
     "build:web": "npm run build --workspace=frontend",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "prisma:generate": "prisma generate",
+    "prisma:format": "prisma format",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.8.0"
   }
 }
