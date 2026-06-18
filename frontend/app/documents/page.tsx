@@ -194,8 +194,17 @@ export default function DocumentsPage() {
 
       {/* Documents Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-pulse">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="glass border border-border/30 rounded-xl p-5 space-y-3">
+              <div className="flex justify-between">
+                <div className="h-4 w-32 bg-secondary/60 rounded-lg" />
+                <div className="h-6 w-6 bg-secondary/40 rounded-md" />
+              </div>
+              <div className="h-3 w-24 bg-secondary/40 rounded" />
+              <div className="h-8 w-full bg-secondary/50 rounded-lg mt-2" />
+            </div>
+          ))}
         </div>
       ) : filteredDocs.length === 0 ? (
         <Card className="glass border-border/50">

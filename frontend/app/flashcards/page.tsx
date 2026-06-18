@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { BrainCircuit, RotateCcw, CheckCircle, Flame, Sparkles } from 'lucide-react'
 import { flashcardsApi, gamificationApi } from '@/lib/api'
-import { recordFlashcardReview } from '@/lib/progress'
+import { recordFlashcardReview, recordStudyTime } from '@/lib/progress'
 import { Flashcard } from '@/types'
 
 // Mock data fallback
@@ -22,6 +22,7 @@ export default function FlashcardsPage() {
   const [loading, setLoading] = useState(true)
   const [reviewing, setReviewing] = useState(false)
   const [stats, setStats] = useState({ mastered: 98, total: 142, due_today: 0 })
+  const sessionStartRef = useRef<number>(Date.now())
 
   useEffect(() => {
     loadDueCards()
@@ -68,6 +69,11 @@ export default function FlashcardsPage() {
     } finally {
       // Always record progress locally
       recordFlashcardReview(quality)
+      // When finishing the last card, record study session time
+      if (currentIndex >= dueCards.length - 1) {
+        const minutesSpent = Math.max(1, Math.round((Date.now() - sessionStartRef.current) / 60000))
+        recordStudyTime(minutesSpent)
+      }
       setReviewing(false)
       if (currentIndex < dueCards.length - 1) {
         setShowAnswer(false)

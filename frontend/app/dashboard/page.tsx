@@ -78,8 +78,51 @@ export default function DashboardPage() {
 
   if (loading || !stats) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <div className="p-6 lg:p-8 space-y-8 animate-pulse">
+        {/* Header skeleton */}
+        <div className="flex justify-between items-end">
+          <div className="space-y-2">
+            <div className="h-8 w-56 bg-secondary/60 rounded-xl" />
+            <div className="h-4 w-72 bg-secondary/40 rounded-lg" />
+          </div>
+          <div className="h-10 w-36 bg-secondary/60 rounded-xl" />
+        </div>
+        {/* Stats cards skeleton */}
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="glass border border-border/30 rounded-xl p-5 space-y-3">
+              <div className="flex justify-between">
+                <div className="h-3 w-16 bg-secondary/60 rounded" />
+                <div className="h-6 w-6 bg-secondary/60 rounded-lg" />
+              </div>
+              <div className="h-7 w-24 bg-secondary/60 rounded-lg" />
+              <div className="h-1.5 w-full bg-secondary/60 rounded-full" />
+            </div>
+          ))}
+        </div>
+        {/* Chart + side skeleton */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2 glass border border-border/30 rounded-xl p-6 space-y-4">
+            <div className="h-5 w-40 bg-secondary/60 rounded-lg" />
+            <div className="flex items-end gap-2 h-44">
+              {[60, 40, 80, 55, 70, 45, 90].map((h, i) => (
+                <div key={i} className="flex-1 bg-secondary/50 rounded-t-md" style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="glass border border-border/30 rounded-xl p-5 space-y-3">
+              <div className="h-5 w-32 bg-secondary/60 rounded-lg" />
+              <div className="h-10 w-28 bg-secondary/60 rounded-xl" />
+            </div>
+            <div className="glass border border-border/30 rounded-xl p-5 space-y-3">
+              <div className="h-5 w-28 bg-secondary/60 rounded-lg" />
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-10 w-full bg-secondary/40 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

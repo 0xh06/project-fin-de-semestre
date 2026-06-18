@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { 
-  LayoutDashboard, 
-  FileText, 
-  BrainCircuit, 
-  MessageSquare, 
-  Network, 
+import {
+  LayoutDashboard,
+  FileText,
+  BrainCircuit,
+  MessageSquare,
+  Network,
   Settings,
   Flame,
   Star,
@@ -33,9 +33,11 @@ interface SidebarProps {
   level: number
   xpToNext: number
   streak: number
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
-export function Sidebar({ xp, level, xpToNext, streak }: SidebarProps) {
+export function Sidebar({ xp, level, xpToNext, streak, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const [userName, setUserName] = useState('Étudiant')
@@ -56,12 +58,24 @@ export function Sidebar({ xp, level, xpToNext, streak }: SidebarProps) {
   const initials = userName.slice(0, 2).toUpperCase()
 
   return (
-    <aside
-      className={cn(
-        'relative flex h-full flex-col border-r border-border/50 bg-card/80 backdrop-blur-xl transition-all duration-300 ease-in-out',
-        collapsed ? 'w-[72px]' : 'w-64'
+    <>
+      {/* Mobile overlay backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={onMobileClose}
+        />
       )}
-    >
+      <aside
+        className={cn(
+          'relative flex h-full flex-col border-r border-border/50 bg-card/80 backdrop-blur-xl transition-all duration-300 ease-in-out',
+          // Desktop: always visible, collapsible
+          'hidden md:flex',
+          collapsed ? 'md:w-[72px]' : 'md:w-64',
+          // Mobile: overlay when open
+          mobileOpen && 'fixed inset-y-0 left-0 z-40 flex w-72'
+        )}
+      >
       {/* Subtle gradient overlay at top */}
       <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none" />
 
@@ -162,7 +176,7 @@ export function Sidebar({ xp, level, xpToNext, streak }: SidebarProps) {
           {navItems.map((item, idx) => {
             const Icon = item.icon
             const isActive = pathname?.startsWith(item.href)
-            
+
             return (
               <Link key={item.href} href={item.href}>
                 <div
@@ -184,12 +198,12 @@ export function Sidebar({ xp, level, xpToNext, streak }: SidebarProps) {
                   {isActive && (
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full gradient-primary" />
                   )}
-                  
+
                   <Icon className={cn(
                     'relative z-10 h-[18px] w-[18px] shrink-0 transition-transform duration-200',
                     isActive ? 'text-primary' : 'group-hover:scale-110'
                   )} />
-                  
+
                   {!collapsed && (
                     <span className="relative z-10 animate-fade-in">{item.label}</span>
                   )}
@@ -230,6 +244,7 @@ export function Sidebar({ xp, level, xpToNext, streak }: SidebarProps) {
           )}
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }

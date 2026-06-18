@@ -8,6 +8,7 @@ import { MessageSquare, Send, FileText, X, Sparkles, Bot, User, Zap, Settings } 
 import { chatApi, documentsApi } from '@/lib/api'
 import { Document, ChatMessage } from '@/types'
 import Link from 'next/link'
+import MarkdownText from '@/components/markdown-text'
 
 // ─── Gemini Direct API ──────────────────────────────────────────────────────
 
@@ -372,7 +373,11 @@ export default function ChatPage() {
                         : 'bg-secondary/50 border border-border/30 rounded-bl-md'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    {msg.role === 'assistant' ? (
+                      <MarkdownText content={msg.content} />
+                    ) : (
+                      <p className="text-sm leading-relaxed">{msg.content}</p>
+                    )}
                     {msg.tokens > 0 && (
                       <p className="text-[10px] mt-2 opacity-50 font-mono">
                         {msg.tokens} tokens
