@@ -24,7 +24,7 @@ function cleanUrl(url: string) {
 
 export function getSupabaseConfig(): SupabaseConfig | null {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const envAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const envAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
   if (envUrl && envAnonKey) {
     return { url: cleanUrl(envUrl), anonKey: envAnonKey.trim() }
