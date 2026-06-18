@@ -2,6 +2,7 @@
 // Uses public anon key only. Never put the service_role key in the frontend.
 
 import type { AuthResponse, User } from '@/types'
+import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/utils/supabase/config'
 
 const URL_STORAGE_KEY = 'supabase_url'
 const ANON_KEY_STORAGE_KEY = 'supabase_anon_key'
@@ -23,8 +24,8 @@ function cleanUrl(url: string) {
 }
 
 export function getSupabaseConfig(): SupabaseConfig | null {
-  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const envAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  const envUrl = SUPABASE_URL
+  const envAnonKey = SUPABASE_PUBLISHABLE_KEY
 
   if (envUrl && envAnonKey) {
     return { url: cleanUrl(envUrl), anonKey: envAnonKey.trim() }
