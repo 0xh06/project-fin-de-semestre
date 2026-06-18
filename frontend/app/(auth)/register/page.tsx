@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { authApi } from '@/lib/api'
 import { beginOAuth, getAuthErrorMessage } from '@/lib/oauth'
 import { isSupabaseConfigured, supabaseAuth } from '@/lib/supabase'
+import { signInWithGoogle } from '@/lib/supabase-google'
 import { BrainCircuit, ArrowRight, Eye, EyeOff, CheckCircle2, Github, Sparkles, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 
@@ -112,6 +113,11 @@ export default function RegisterPage() {
     setOauthLoading(provider)
 
     try {
+      if (provider === 'google') {
+        await signInWithGoogle()
+        return
+      }
+
       await beginOAuth(provider, 'register')
     } catch (err: any) {
       if (err?.code === 'api_unreachable') setIsOffline(true)
