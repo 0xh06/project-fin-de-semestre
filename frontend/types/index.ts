@@ -1,10 +1,28 @@
 // TypeScript types matching C structs from SmartStudy AI backend
 
+export type AvatarHairStyle = 'short' | 'long' | 'spiky' | 'fluffy' | 'bun'
+export type AvatarMood = 'neutral' | 'happy' | 'cool' | 'surprised' | 'thinking' | 'wink'
+export type AvatarOutfit = 'hoodie' | 'shirt' | 'overalls' | 'trench' | 'tshirt'
+export type AvatarAccessory = 'none' | 'glasses' | 'headset' | 'crown' | 'visor'
+export type AvatarBackground = 'nebula' | 'midnight' | 'sunset' | 'matrix'
+
+export interface AvatarConfig {
+  skinTone: string
+  hairColor: string
+  hairStyle: AvatarHairStyle
+  mood: AvatarMood
+  outfit: AvatarOutfit
+  outfitColor: string
+  accessory: AvatarAccessory
+  background: AvatarBackground
+}
+
 export interface User {
   id: number;
   username: string;
   email: string;
   created_at: string;
+  avatar?: AvatarConfig;
 }
 
 export interface Document {

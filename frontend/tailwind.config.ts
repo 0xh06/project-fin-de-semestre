@@ -59,6 +59,14 @@ const config = {
         sm: "calc(var(--radius) - 4px)",
       },
       keyframes: {
+        blink: {
+          '0%, 96%, 98%': { transform: 'scaleY(1)' },
+          '97%': { transform: 'scaleY(0.1)' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-4px)' },
+        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -71,6 +79,8 @@ const config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        'blink': 'blink 4s infinite',
+        'float': 'float 6s ease-in-out infinite',
       },
     },
   },

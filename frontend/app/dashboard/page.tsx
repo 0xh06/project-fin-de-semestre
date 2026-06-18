@@ -1,5 +1,7 @@
 'use client'
 
+import { AvatarFigure } from '@/components/avatar-studio'
+import { USER_UPDATED_EVENT } from '@/lib/avatar'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,7 +21,8 @@ import {
 } from 'lucide-react'
 import { gamificationApi } from '@/lib/api'
 import { getProgress, getDayIndex } from '@/lib/progress'
-import { DashboardStats } from '@/types'
+import { getStoredUser } from '@/lib/user-storage'
+import { AvatarConfig, DashboardStats } from '@/types'
 import Link from 'next/link'
 
 function progressToDashboardStats(p: ReturnType<typeof getProgress>): DashboardStats {
@@ -46,6 +49,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('Bonjour')
   const [userName, setUserName] = useState('Étudiant')
+  const [userAvatar, setUserAvatar] = useState<AvatarConfig | undefined>(undefined)
   const [todayIdx, setTodayIdx] = useState(6)
 
   useEffect(() => {
@@ -56,13 +60,17 @@ export default function DashboardPage() {
 
     setTodayIdx(getDayIndex())
 
-    const stored = localStorage.getItem('user')
-    if (stored) {
-      try {
-        const u = JSON.parse(stored)
-        if (u.username) setUserName(u.username)
-      } catch {}
+    const syncUser = () => {
+      const storedUser = getStoredUser()
+      if (!storedUser) return
+
+      if (storedUser.username) setUserName(storedUser.username)
+      setUserAvatar(storedUser.avatar)
     }
+
+    syncUser()
+    window.addEventListener(USER_UPDATED_EVENT, syncUser)
+    window.addEventListener('storage', syncUser)
 
     gamificationApi.getDashboard()
       .then(data => {
@@ -74,6 +82,11 @@ export default function DashboardPage() {
         setStats(progressToDashboardStats(getProgress()))
         setLoading(false)
       })
+
+    return () => {
+      window.removeEventListener(USER_UPDATED_EVENT, syncUser)
+      window.removeEventListener('storage', syncUser)
+    }
   }, [])
 
   if (loading || !stats) {
@@ -138,15 +151,18 @@ export default function DashboardPage() {
     <div className="p-6 lg:p-8 space-y-8 animate-fade-in">
       {/* Hero Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            {greeting}, {userName} 👋
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {stats.streak_days > 0
-              ? `Votre série de ${stats.streak_days} jour${stats.streak_days > 1 ? 's' : ''} est en feu ! Continuez ainsi.`
-              : 'Commencez votre session pour démarrer votre série.'}
-          </p>
+        <div className="flex items-center gap-4">
+          <AvatarFigure avatar={userAvatar} className="h-20 w-20 rounded-[24px] shadow-xl shadow-primary/10" />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              {greeting}, {userName} 👋
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {stats.streak_days > 0
+                ? `Votre série de ${stats.streak_days} jour${stats.streak_days > 1 ? 's' : ''} est en feu ! Continuez ainsi.`
+                : 'Commencez votre session pour démarrer votre série.'}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Link href="/flashcards">

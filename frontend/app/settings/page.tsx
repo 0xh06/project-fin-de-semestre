@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { AvatarStudio } from '@/components/avatar-studio'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Settings, User, Key, Palette, Bell, LogOut, CheckCircle2, AlertCircle, Database, Wifi } from 'lucide-react'
+import { Settings, User, Key, Palette, Bell, LogOut, CheckCircle2, AlertCircle, Database, Wifi, Sparkles } from 'lucide-react'
+import { defaultAvatar, normalizeAvatarConfig } from '@/lib/avatar'
 import { authApi } from '@/lib/api'
-import { getSupabaseConfig, saveSupabaseConfig, supabaseAuth } from '@/lib/supabase'
+import { getSupabaseConfig, saveSupabaseConfig, supabaseAuth, isSupabaseConfigured } from '@/lib/supabase'
+import { getProgress } from '@/lib/progress'
+import { getStoredUser, setStoredUser } from '@/lib/user-storage'
 import { User as UserType } from '@/types'
 import { useRouter } from 'next/navigation'
 
@@ -28,15 +32,27 @@ export default function SettingsPage() {
   const [supabaseAnonKey, setSupabaseAnonKey] = useState('')
   const [theme, setTheme] = useState('dark')
   const [notifications, setNotifications] = useState(true)
+  const [avatar, setAvatar] = useState(defaultAvatar)
+  const [avatarLevel, setAvatarLevel] = useState(1)
 
   useEffect(() => {
     loadUser()
   }, [])
 
   const loadUser = async () => {
+    const storedUser = getStoredUser()
+
+    if (storedUser) {
+      setUser(storedUser)
+      if (storedUser.username) setUsername(storedUser.username)
+      if (storedUser.email) setEmail(storedUser.email)
+      setAvatar(normalizeAvatarConfig(storedUser.avatar))
+    }
+
     // Load saved Gemini key and Supabase config from localStorage/env
     const savedKey = localStorage.getItem('gemini_api_key')
     if (savedKey) setApiKey(savedKey)
+    setAvatarLevel(getProgress().level)
 
     const supabase = getSupabaseConfig()
     if (supabase) {
@@ -48,20 +64,33 @@ export default function SettingsPage() {
 
     try {
       const userData = await authApi.getCurrentUser()
-      setUser(userData)
-      if (userData.username) setUsername(userData.username)
-      if (userData.email) setEmail(userData.email)
+      const nextUser = {
+        ...userData,
+        avatar: normalizeAvatarConfig(storedUser?.avatar ?? userData.avatar),
+      }
+
+      setUser(nextUser)
+      if (nextUser.username) setUsername(nextUser.username)
+      if (nextUser.email) setEmail(nextUser.email)
+      setAvatar(normalizeAvatarConfig(nextUser.avatar))
+      setStoredUser(nextUser)
     } catch {
-      const stored = localStorage.getItem('user')
-      if (stored) {
-        try {
-          const u = JSON.parse(stored)
-          setUser(u)
-          if (u.username) setUsername(u.username)
-          if (u.email) setEmail(u.email)
-        } catch {}
+      if (storedUser) {
+        setUser(storedUser)
+        if (storedUser.username) setUsername(storedUser.username)
+        if (storedUser.email) setEmail(storedUser.email)
+        setAvatar(normalizeAvatarConfig(storedUser.avatar))
       } else {
-        setUser({ id: 1, email: 'user@smartstudy.ai', username: 'Étudiant', created_at: new Date().toISOString() })
+        const fallbackUser = {
+          id: 1,
+          email: 'user@smartstudy.ai',
+          username: 'Étudiant',
+          created_at: new Date().toISOString(),
+          avatar: defaultAvatar,
+        }
+
+        setUser(fallbackUser)
+        setAvatar(defaultAvatar)
       }
     } finally {
       setLoading(false)
@@ -74,14 +103,36 @@ export default function SettingsPage() {
     try {
       await new Promise(resolve => setTimeout(resolve, 600))
 
-      // Save username
-      const stored = localStorage.getItem('user')
-      if (stored) {
-        try {
-          const u = JSON.parse(stored)
-          u.username = username
-          localStorage.setItem('user', JSON.stringify(u))
-        } catch {}
+      const nextUser = {
+        ...(user ?? {
+          id: 1,
+          email,
+          username,
+          created_at: new Date().toISOString(),
+        }),
+        username,
+        email,
+        avatar: normalizeAvatarConfig(avatar),
+      }
+
+      setUser(nextUser)
+      setStoredUser(nextUser)
+
+      // Try to save to backend or Supabase
+      try {
+        await authApi.updateProfile(nextUser)
+      } catch (err: any) {
+        // If backend fails but we have Supabase configured, update Supabase metadata
+        if (err?.code === 'api_unreachable' && isSupabaseConfigured()) {
+          try {
+            await supabaseAuth.updateUserMetadata({ 
+              username: nextUser.username,
+              avatar: nextUser.avatar
+            })
+          } catch (supaErr) {
+            console.warn('Supabase metadata update failed', supaErr)
+          }
+        }
       }
 
       // Save Gemini API key
@@ -141,7 +192,7 @@ export default function SettingsPage() {
     <div className="p-6 lg:p-8 h-full overflow-y-auto animate-fade-in relative">
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="max-w-3xl mx-auto space-y-8 relative z-10">
+      <div className="max-w-6xl mx-auto space-y-8 relative z-10">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2 rounded-xl bg-primary/10">
             <Settings className="h-6 w-6 text-primary" />
@@ -189,6 +240,27 @@ export default function SettingsPage() {
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass border-border/50 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <CardHeader className="border-b border-border/30 bg-secondary/20 pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Studio d'identité
+            </CardTitle>
+            <CardDescription>
+              Crée ton avatar, applique un preset et personnalise ton style comme dans un vrai studio.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <AvatarStudio
+              value={avatar}
+              onChange={setAvatar}
+              userName={username || user?.username || 'CodeMaster'}
+              level={avatarLevel}
+            />
           </CardContent>
         </Card>
 

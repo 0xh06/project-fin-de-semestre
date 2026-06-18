@@ -1,5 +1,9 @@
 'use client'
 
+import { AvatarFigure } from '@/components/avatar-studio'
+import { USER_UPDATED_EVENT } from '@/lib/avatar'
+import { getStoredUser } from '@/lib/user-storage'
+import type { AvatarConfig } from '@/types'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -12,7 +16,6 @@ import {
   Settings,
   Flame,
   Star,
-  LogOut,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
@@ -42,20 +45,29 @@ export function Sidebar({ xp, level, xpToNext, streak, mobileOpen = false, onMob
   const [collapsed, setCollapsed] = useState(false)
   const [userName, setUserName] = useState('Étudiant')
   const [userEmail, setUserEmail] = useState('user@smartstudy.ai')
+  const [userAvatar, setUserAvatar] = useState<AvatarConfig | undefined>(undefined)
 
   useEffect(() => {
-    const stored = localStorage.getItem('user')
-    if (stored) {
-      try {
-        const u = JSON.parse(stored)
-        if (u.username) setUserName(u.username)
-        if (u.email) setUserEmail(u.email)
-      } catch {}
+    const syncUser = () => {
+      const storedUser = getStoredUser()
+      if (!storedUser) return
+
+      if (storedUser.username) setUserName(storedUser.username)
+      if (storedUser.email) setUserEmail(storedUser.email)
+      setUserAvatar(storedUser.avatar)
+    }
+
+    syncUser()
+    window.addEventListener(USER_UPDATED_EVENT, syncUser)
+    window.addEventListener('storage', syncUser)
+
+    return () => {
+      window.removeEventListener(USER_UPDATED_EVENT, syncUser)
+      window.removeEventListener('storage', syncUser)
     }
   }, [])
 
   const xpPercent = xpToNext > 0 ? Math.min((xp / (xp + xpToNext)) * 100, 100) : 0
-  const initials = userName.slice(0, 2).toUpperCase()
 
   return (
     <>
@@ -231,9 +243,7 @@ export function Sidebar({ xp, level, xpToNext, streak, mobileOpen = false, onMob
           collapsed ? 'justify-center' : 'gap-3'
         )}>
           <div className="relative shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full gradient-primary text-white text-xs font-bold shadow-md shadow-primary/20">
-              {initials}
-            </div>
+            <AvatarFigure avatar={userAvatar} className="h-10 w-10 rounded-2xl shadow-lg shadow-primary/10" />
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-card" />
           </div>
           {!collapsed && (

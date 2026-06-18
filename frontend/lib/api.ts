@@ -101,6 +101,13 @@ export const authApi = {
   async getCurrentUser(): Promise<User> {
     return request<User>('/api/auth/me');
   },
+
+  async updateProfile(data: Partial<User>): Promise<User> {
+    return request<User>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // Documents API

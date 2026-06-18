@@ -98,6 +98,7 @@ function mapSupabaseUser(supabaseUser: any, fallbackEmail: string, fallbackUsern
     username: meta.username || meta.name || fallbackUsername || fallbackEmail.split('@')[0] || 'Étudiant',
     email: supabaseUser?.email || fallbackEmail,
     created_at: supabaseUser?.created_at || new Date().toISOString(),
+    avatar: meta.avatar,
   }
 }
 
@@ -154,5 +155,18 @@ export const supabaseAuth = {
   async testConnection(): Promise<boolean> {
     await supabaseFetch('/auth/v1/settings', { method: 'GET' })
     return true
+  },
+
+  async updateUserMetadata(metadata: any): Promise<User> {
+    const data = await supabaseFetch<any>('/auth/v1/user', {
+      method: 'PUT',
+      body: JSON.stringify({ data: metadata }),
+    })
+    
+    if (!data?.id) {
+      throw new SupabaseClientError('Impossible de mettre à jour le profil Supabase.', 'supabase_update_failed')
+    }
+    
+    return mapSupabaseUser(data, data.email || '')
   },
 }
