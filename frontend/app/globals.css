@@ -39,6 +39,10 @@
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
   }
+  ::selection {
+    background: hsla(217.2, 91.2%, 59.8%, 0.3);
+    color: inherit;
+  }
   body {
     @apply bg-background text-foreground;
     background-image:

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { FloatingBackButton } from '@/components/floating-back-button'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -25,7 +26,10 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="antialiased min-h-screen">{children}</body>
+      <body className="antialiased min-h-screen relative">
+        <FloatingBackButton />
+        {children}
+      </body>
     </html>
   )
 }
