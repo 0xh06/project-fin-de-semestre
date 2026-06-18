@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { authApi } from '@/lib/api'
-import { beginOAuth, getAuthErrorMessage } from '@/lib/oauth'
+import { getAuthErrorMessage } from '@/lib/oauth'
 import { isSupabaseConfigured, supabaseAuth } from '@/lib/supabase'
-import { signInWithGoogle } from '@/lib/supabase-google'
+import { signInWithGitHub, signInWithGoogle } from '@/lib/supabase-oauth'
 import { BrainCircuit, ArrowRight, Eye, EyeOff, Sparkles, Github, WifiOff } from 'lucide-react'
 import Link from 'next/link'
 
@@ -87,7 +87,11 @@ export default function LoginPage() {
         return
       }
 
-      await beginOAuth(provider, 'login')
+      if (provider === 'github') {
+        await signInWithGitHub()
+        return
+      }
+
     } catch (err: any) {
       if (err?.code === 'api_unreachable') setIsOffline(true)
       setError(getAuthErrorMessage(err?.code) || err?.message || 'Connexion OAuth impossible')
