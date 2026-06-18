@@ -2,13 +2,10 @@
   "name": "smartstudy-ai-monorepo",
   "private": true,
   "workspaces": [
-    "frontend",
-    "mobile",
-    "packages/*"
+    "frontend"
   ],
   "scripts": {
     "dev:web": "npm run dev --workspace=frontend",
-    "dev:mobile": "npm run dev --workspace=mobile",
     "build:web": "npm run build --workspace=frontend",
     "install:all": "npm install",
     "prisma:generate": "prisma generate",
