@@ -15,34 +15,38 @@ import {
   Trophy,
   Sparkles,
   Zap,
-  BookOpen,
   MessageSquare
 } from 'lucide-react'
 import { gamificationApi } from '@/lib/api'
+import { getProgress, getDayIndex } from '@/lib/progress'
 import { DashboardStats } from '@/types'
 import Link from 'next/link'
 
-const MOCK_STATS: DashboardStats = {
-  user_id: 1,
-  xp_total: 1450,
-  level: 4,
-  xp_to_next_level: 550,
-  streak_days: 7,
-  longest_streak: 12,
-  documents_count: 8,
-  flashcards_total: 142,
-  flashcards_mastered: 98,
-  quizzes_completed: 5,
-  perfect_quizzes: 2,
-  study_time_minutes: 847,
-  weekly_xp: [120, 85, 200, 150, 95, 180, 75],
-  badges_count: 3,
+function progressToDashboardStats(p: ReturnType<typeof getProgress>): DashboardStats {
+  return {
+    user_id: 1,
+    xp_total: p.xp_total,
+    level: p.level,
+    xp_to_next_level: p.xp_to_next_level,
+    streak_days: p.streak_days,
+    longest_streak: p.longest_streak,
+    documents_count: p.documents_count,
+    flashcards_total: p.flashcards_total,
+    flashcards_mastered: p.flashcards_mastered,
+    quizzes_completed: p.quizzes_completed,
+    perfect_quizzes: p.perfect_quizzes,
+    study_time_minutes: p.study_time_minutes,
+    weekly_xp: p.weekly_xp,
+    badges_count: p.badges_count,
+  }
 }
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>(MOCK_STATS)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('Bonjour')
+  const [userName, setUserName] = useState('Étudiant')
+  const [todayIdx, setTodayIdx] = useState(6)
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -50,19 +54,40 @@ export default function DashboardPage() {
     else if (hour < 18) setGreeting('Bon après-midi')
     else setGreeting('Bonsoir')
 
+    setTodayIdx(getDayIndex())
+
+    const stored = localStorage.getItem('user')
+    if (stored) {
+      try {
+        const u = JSON.parse(stored)
+        if (u.username) setUserName(u.username)
+      } catch {}
+    }
+
     gamificationApi.getDashboard()
       .then(data => {
         setStats(data)
         setLoading(false)
       })
       .catch(() => {
-        // Use mock data when backend is offline
+        // Backend offline — use real local progress
+        setStats(progressToDashboardStats(getProgress()))
         setLoading(false)
       })
   }, [])
 
+  if (loading || !stats) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="h-8 w-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    )
+  }
+
   const xpProgress = (stats.xp_total / (stats.xp_total + stats.xp_to_next_level)) * 100
-  const flashcardProgress = stats.flashcards_total > 0 ? (stats.flashcards_mastered / stats.flashcards_total) * 100 : 0
+  const flashcardProgress = stats.flashcards_total > 0
+    ? (stats.flashcards_mastered / stats.flashcards_total) * 100
+    : 0
   const maxWeeklyXP = Math.max(...stats.weekly_xp, 1)
   const dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 
@@ -72,13 +97,12 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            {greeting} 👋
+            {greeting}, {userName} 👋
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
             {stats.streak_days > 0
-              ? `Votre série de ${stats.streak_days} jours est en feu ! Continuez ainsi.`
-              : 'Commencez votre session pour maintenir votre série.'
-            }
+              ? `Votre série de ${stats.streak_days} jour${stats.streak_days > 1 ? 's' : ''} est en feu ! Continuez ainsi.`
+              : 'Commencez votre session pour démarrer votre série.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -181,30 +205,26 @@ export default function DashboardPage() {
             <div className="flex items-end justify-between h-44 gap-2 pt-4">
               {stats.weekly_xp.map((xp, index) => {
                 const height = (xp / maxWeeklyXP) * 100
-                const isToday = index === stats.weekly_xp.length - 1
+                const isToday = index === todayIdx
                 return (
                   <div key={index} className="flex flex-col items-center flex-1 group">
-                    {/* XP value on hover */}
                     <span className="text-[10px] font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity mb-1">
-                      {xp}
+                      {xp > 0 ? xp : ''}
                     </span>
                     <div className="w-full relative">
                       <div
-                        className={`w-full rounded-t-md transition-all duration-500 ease-out ${
+                        className={`w-full rounded-t-md transition-all duration-700 ease-out ${
                           isToday
                             ? 'gradient-primary shadow-md shadow-primary/20'
-                            : 'bg-secondary hover:bg-primary/30'
+                            : xp > 0 ? 'bg-primary/30 hover:bg-primary/50' : 'bg-secondary hover:bg-primary/20'
                         }`}
                         style={{
                           height: `${Math.max(height, 4)}px`,
-                          minHeight: xp > 0 ? '6px' : '2px',
-                          animationDelay: `${index * 80}ms`
+                          minHeight: xp > 0 ? '8px' : '3px',
                         }}
                       />
                     </div>
-                    <span className={`text-[10px] mt-2 font-medium ${
-                      isToday ? 'text-primary' : 'text-muted-foreground'
-                    }`}>
+                    <span className={`text-[10px] mt-2 font-medium ${isToday ? 'text-primary font-bold' : 'text-muted-foreground'}`}>
                       {dayLabels[index]}
                     </span>
                   </div>
@@ -214,7 +234,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Study Time & Quick Info */}
+        {/* Study Time & Quick Actions */}
         <div className="space-y-4">
           <Card className="glass border-border/50 overflow-hidden relative">
             <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-3xl" />
@@ -230,10 +250,17 @@ export default function DashboardPage() {
                 {' '}{stats.study_time_minutes % 60}<span className="text-lg font-normal text-muted-foreground">min</span>
               </div>
               <p className="text-[11px] text-muted-foreground mt-1">Temps total d'apprentissage</p>
+              {stats.quizzes_completed > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/30 flex items-center gap-2">
+                  <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="text-xs text-muted-foreground">
+                    {stats.quizzes_completed} quiz • {stats.perfect_quizzes} parfait{stats.perfect_quizzes > 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Quick Actions Mini */}
           <Card className="glass border-border/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-bold flex items-center gap-2">

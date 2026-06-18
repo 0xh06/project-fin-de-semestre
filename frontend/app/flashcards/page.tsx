@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { BrainCircuit, RotateCcw, CheckCircle, Flame, Sparkles } from 'lucide-react'
 import { flashcardsApi, gamificationApi } from '@/lib/api'
+import { recordFlashcardReview } from '@/lib/progress'
 import { Flashcard } from '@/types'
 
 // Mock data fallback
@@ -63,11 +64,11 @@ export default function FlashcardsPage() {
       await flashcardsApi.review({ card_id: dueCards[currentIndex].id, quality })
       await gamificationApi.addXp(5, 'Flashcard révisée')
     } catch {
-      // Simulate review in offline mode
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 300))
     } finally {
+      // Always record progress locally
+      recordFlashcardReview(quality)
       setReviewing(false)
-      // Move to next card
       if (currentIndex < dueCards.length - 1) {
         setShowAnswer(false)
         setTimeout(() => setCurrentIndex(currentIndex + 1), 150)
@@ -92,7 +93,7 @@ export default function FlashcardsPage() {
     return (
       <div className="p-6 lg:p-8 h-full flex flex-col items-center justify-center animate-fade-in">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
-        
+
         <Card className="glass border-border/50 max-w-md w-full text-center relative overflow-hidden z-10 shadow-2xl shadow-emerald-500/10">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-400" />
           <CardContent className="pt-12 pb-10 flex flex-col items-center">
@@ -103,7 +104,7 @@ export default function FlashcardsPage() {
             <p className="text-muted-foreground mb-8">
               Excellente session. Vous avez révisé <span className="font-semibold text-emerald-400">{dueCards.length}</span> cartes aujourd'hui.
             </p>
-            
+
             <div className="flex items-center gap-6 mb-8 text-sm bg-secondary/50 px-6 py-3 rounded-2xl border border-border/30">
               <div className="flex flex-col items-center">
                 <span className="text-xl font-bold gradient-text">+{dueCards.length * 5}</span>
@@ -156,14 +157,14 @@ export default function FlashcardsPage() {
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto w-full relative perspective-1000">
-        
+
         {/* Glow behind the card */}
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] rounded-full blur-[100px] transition-colors duration-1000 -z-10 ${
           showAnswer ? 'bg-indigo-500/10' : 'bg-primary/10'
         }`} />
 
         {/* 3D Flip Container */}
-        <div 
+        <div
           className="relative w-full h-[400px] transition-all duration-500 preserve-3d cursor-pointer"
           style={{ transform: showAnswer ? 'rotateX(180deg)' : 'rotateX(0deg)' }}
           onClick={() => !showAnswer && setShowAnswer(true)}
@@ -189,7 +190,7 @@ export default function FlashcardsPage() {
           </div>
 
           {/* Back of card (Answer) */}
-          <div 
+          <div
             className="absolute inset-0 backface-hidden"
             style={{ transform: 'rotateX(180deg)' }}
           >

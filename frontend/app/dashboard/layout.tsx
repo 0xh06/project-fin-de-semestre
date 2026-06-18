@@ -3,22 +3,26 @@
 import { Sidebar } from '@/components/sidebar'
 import { useEffect, useState } from 'react'
 import { gamificationApi } from '@/lib/api'
-
-const MOCK_STATS = {
-  xp: 1450,
-  level: 4,
-  xpToNext: 550,
-  streak: 7,
-}
+import { getProgress } from '@/lib/progress'
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [stats, setStats] = useState(MOCK_STATS)
+  const [stats, setStats] = useState({ xp: 0, level: 1, xpToNext: 500, streak: 0 })
 
   useEffect(() => {
+    // Load from localStorage immediately (no flicker)
+    const local = getProgress()
+    setStats({
+      xp: local.xp_total,
+      level: local.level,
+      xpToNext: local.xp_to_next_level,
+      streak: local.streak_days,
+    })
+
+    // Then try API
     gamificationApi.getDashboard()
       .then(data => setStats({
         xp: data.xp_total,
@@ -27,8 +31,7 @@ export default function DashboardLayout({
         streak: data.streak_days,
       }))
       .catch(() => {
-        // Keep mock data when backend is offline
-        console.log('Using mock dashboard stats (backend offline)')
+        // Keep local progress (already set above)
       })
   }, [])
 

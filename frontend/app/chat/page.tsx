@@ -8,6 +8,41 @@ import { MessageSquare, Send, FileText, X, Sparkles, Bot, User } from 'lucide-re
 import { chatApi, documentsApi } from '@/lib/api'
 import { Document, ChatMessage } from '@/types'
 
+function generateOfflineReply(message: string): string {
+  const m = message.toLowerCase()
+
+  if (m.includes('flashcard') || m.includes('fiche') || m.includes('mémoriser') || m.includes('memoris')) {
+    return `Bien sûr ! Voici 3 flashcards sur ce sujet 🧠\n\n**Carte 1**\nQ : Quelle est la définition principale ?\nR : Le concept central implique une structure organisée permettant de comprendre les relations entre les éléments.\n\n**Carte 2**\nQ : Quelles sont les étapes clés ?\nR : 1) Identification du problème, 2) Analyse des données, 3) Formulation de la solution.\n\n**Carte 3**\nQ : Quelle est l'application pratique ?\nR : Dans un contexte réel, ce concept s'applique pour résoudre des situations complexes de manière méthodique.\n\n> 💡 Connectez le serveur backend pour générer des flashcards depuis vos vrais documents !`
+  }
+
+  if (m.includes('résume') || m.includes('resume') || m.includes('résumé') || m.includes('synthèse')) {
+    return `Voici un résumé structuré du sujet demandé 📋\n\n**Points clés :**\n• Le concept principal repose sur une logique systématique et itérative\n• Les éléments fondamentaux incluent l'analyse, la synthèse et l'évaluation\n• Les applications pratiques couvrent de nombreux domaines d'étude\n\n**À retenir :**\nLa maîtrise de ce sujet demande de la pratique régulière et une révision espacée (méthode SRS).\n\n> 💡 Importez vos PDFs pour obtenir des résumés précis de vos vrais cours !`
+  }
+
+  if (m.includes('quiz') || m.includes('question') || m.includes('test') || m.includes('exercice')) {
+    return `Voici un mini-quiz pour tester tes connaissances ! 🎯\n\n**Question 1 :** Quelle méthode d'apprentissage est basée sur des intervalles de révision croissants ?\na) Méthode Cornell  b) Répétition espacée (SRS)  c) Mind Mapping  d) Lecture active\n\n✅ **Réponse : b) La répétition espacée (SRS)**\nExplication : La méthode SRS (Spaced Repetition System) optimise la mémorisation en révisant les informations juste avant qu'elles soient oubliées.\n\n**Question 2 :** Combien de temps faut-il pour ancrer une nouvelle habitude selon la recherche ?\na) 7 jours  b) 21 jours  c) 66 jours  d) 100 jours\n\n✅ **Réponse : c) 66 jours** en moyenne selon Phillippa Lally (UCL, 2010).\n\n> 💡 Utilisez l'onglet Quiz pour des tests générés depuis vos documents !`
+  }
+
+  if (m.includes('explique') || m.includes('c\'est quoi') || m.includes('qu\'est-ce') || m.includes('définition') || m.includes('definition')) {
+    return `Excellente question ! Laisse-moi t'expliquer ce concept de façon claire 💡\n\n**Définition simple :**\nCe concept fait référence à un ensemble de principes organisés qui permettent de comprendre et d'analyser un phénomène de manière structurée.\n\n**Analogie :**\nPense à ça comme une carte routière : elle ne contient pas toute la réalité, mais elle te donne les informations essentielles pour naviguer efficacement.\n\n**Exemple concret :**\nDans la pratique quotidienne, ce principe s'applique chaque fois que tu analyses une situation complexe en la décomposant en éléments simples.\n\n**Pour aller plus loin :**\nJe te recommande de créer des flashcards sur ce sujet pour mieux le mémoriser ! 🃏\n\n> 💡 Importez vos cours PDF pour des explications basées sur votre contenu réel !`
+  }
+
+  if (m.includes('aide') || m.includes('help') || m.includes('peux-tu') || m.includes('peux tu') || m.includes('salut') || m.includes('bonjour') || m.includes('hello')) {
+    return `Salut ! Je suis ton assistant SmartStudy AI 🤖✨\n\nVoici ce que je peux faire pour toi :\n\n📚 **Expliquer** un concept de ton cours\n📋 **Résumer** un chapitre ou un document\n🃏 **Créer des flashcards** sur n'importe quel sujet\n❓ **Générer un quiz** pour tester tes connaissances\n🧠 **Répondre** à toutes tes questions de cours\n\n**Essaie par exemple :**\n→ *"Explique-moi la loi de l'offre et de la demande"*\n→ *"Crée des flashcards sur la Révolution française"*\n→ *"Résume les grandes étapes de la photosynthèse"*\n\n> ⚠️ Mode démo actif. Connecte le backend pour l'IA sur tes vrais documents.`
+  }
+
+  if (m.includes('pomodoro') || m.includes('méthode') || m.includes('technique') || m.includes('révision')) {
+    return `La **technique Pomodoro** est l'une des meilleures méthodes de productivité ! ⏱️\n\n**Comment ça marche :**\n1. ✅ Choisissez une tâche à accomplir\n2. ⏰ Réglez un minuteur sur **25 minutes**\n3. 🎯 Travaillez avec concentration totale jusqu'à la sonnerie\n4. ☕ Prenez une **pause de 5 minutes**\n5. 🔄 Après 4 cycles, prenez une pause de **15-30 minutes**\n\n**Pourquoi ça fonctionne ?**\n• Réduit la procrastination en rendant le travail moins intimidant\n• Maintient la concentration grâce aux pauses régulières\n• Permet de mesurer sa productivité\n\n**Combiné avec le SRS de SmartStudy**, tu peux réviser pendant les Pomodoros et laisser l'app optimiser tes intervalles automatiquement 🚀`
+  }
+
+  // Default response
+  const responses = [
+    `Très bonne question ! 🎓\n\nPour répondre précisément à "${message}", je vais décomposer le sujet :\n\n**Contexte général :**\nCe sujet s'inscrit dans un cadre d'apprentissage structuré qui nécessite de comprendre les fondamentaux avant d'aborder les concepts avancés.\n\n**Points essentiels à maîtriser :**\n• Comprendre les définitions de base\n• Identifier les relations entre les concepts\n• Pratiquer avec des exemples concrets\n• Réviser régulièrement avec la méthode SRS\n\n> 💡 Pour des réponses précises basées sur tes cours, connecte le backend et importe tes PDFs !`,
+    `Super question ! Voici ma réponse 🧠\n\nSur le sujet "${message}", voici ce qu'il faut retenir :\n\n**L'essentiel :**\nTout concept complexe peut être décomposé en éléments simples. La clé est de partir des principes fondamentaux et de construire progressivement sa compréhension.\n\n**Méthode recommandée :**\n1. Lire la définition officielle\n2. Chercher 2-3 exemples concrets\n3. Créer une flashcard\n4. Réviser après 1 jour, 3 jours, 1 semaine\n\n> ⚠️ Mode démo — connecte le backend pour des réponses basées sur tes vrais documents !`,
+  ]
+  return responses[Math.floor(Math.random() * responses.length)]
+}
+
 export default function ChatPage() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [selectedDocs, setSelectedDocs] = useState<number[]>([])
@@ -88,21 +123,21 @@ export default function ChatPage() {
         created_at: new Date().toISOString(),
       }
       setMessages(prev => [...prev, assistantMsg])
+      setLoading(false)
     } catch {
-      // Simulate a response when backend is offline
+      const reply = generateOfflineReply(userMessage)
       const mockMsg: ChatMessage = {
         id: Date.now() + 1,
         session_id: 0,
         role: 'assistant',
-        content: 'Je suis l\'assistant SmartStudy AI. Le serveur backend n\'est pas disponible actuellement, mais une fois connecté, je pourrai analyser vos documents, répondre à vos questions de cours et vous aider dans vos révisions ! 🧠',
+        content: reply,
         tokens: 0,
         created_at: new Date().toISOString(),
       }
       setTimeout(() => {
         setMessages(prev => [...prev, mockMsg])
-      }, 800)
-    } finally {
-      setLoading(false)
+        setLoading(false)
+      }, 700 + Math.random() * 500)
     }
   }
 

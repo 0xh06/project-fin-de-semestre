@@ -175,3 +175,17 @@
     box-shadow: 0 0 20px hsla(250, 70%, 56%, 0.15), 0 0 60px hsla(250, 70%, 56%, 0.05);
   }
 }
+
+/* 3D card utilities */
+@layer utilities {
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+}

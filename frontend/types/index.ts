@@ -99,9 +99,11 @@ export interface MindMapEdge {
 
 export interface MindMap {
   id: number;
+  document_id?: number;
   title: string;
   nodes: MindMapNode[];
   edges: MindMapEdge[];
+  created_at?: string;
 }
 
 export interface DashboardStats {

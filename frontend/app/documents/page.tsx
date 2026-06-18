@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, Upload, BrainCircuit, Trash2, File, CheckCircle2, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { documentsApi } from '@/lib/api'
+import { recordDocumentUpload } from '@/lib/progress'
 import { Document } from '@/types'
 
 export default function DocumentsPage() {
@@ -36,10 +37,13 @@ export default function DocumentsPage() {
     setUploading(true)
     try {
       await documentsApi.upload(file)
+      recordDocumentUpload()
       setFile(null)
       loadDocuments()
     } catch {
-      console.error('Upload failed')
+      // Backend offline — still record locally
+      recordDocumentUpload()
+      setFile(null)
     } finally {
       setUploading(false)
     }

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Star, Play, CheckCircle2, XCircle, Trophy, BookOpen, Target, ArrowRight } from 'lucide-react'
 import { quizApi, documentsApi, gamificationApi } from '@/lib/api'
+import { recordQuizCompletion } from '@/lib/progress'
 import { Document, QuizSession, QuizQuestion } from '@/types'
 
 const MOCK_QUESTION: QuizQuestion = {
@@ -24,7 +25,7 @@ export default function QuizPage() {
   const [mode, setMode] = useState<'multiple_choice' | 'true_false' | 'open_ended'>('multiple_choice')
   const [difficulty, setDifficulty] = useState<'auto' | 'easy' | 'medium' | 'hard'>('auto')
   const [questionCount, setQuestionCount] = useState(10)
-  
+
   const [session, setSession] = useState<QuizSession | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState<QuizQuestion | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -32,8 +33,9 @@ export default function QuizPage() {
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{ is_correct: boolean; explanation?: string } | null>(null)
   const [loading, setLoading] = useState(false)
-  
+
   const [finished, setFinished] = useState(false)
+  const [correctCount, setCorrectCount] = useState(0)
   const [finalReport, setFinalReport] = useState<{ score: number; weak_topics: string[]; recommendations: string[] } | null>(null)
 
   useEffect(() => {
@@ -77,14 +79,14 @@ export default function QuizPage() {
   }
 
   const toggleDocument = (docId: number) => {
-    setSelectedDocs(prev => 
+    setSelectedDocs(prev =>
       prev.includes(docId) ? prev.filter(id => id !== docId) : [...prev, docId]
     )
   }
 
   const startQuiz = async () => {
     if (selectedDocs.length === 0) return
-    
+
     setLoading(true)
     try {
       const newSession = await quizApi.createSession({
@@ -124,7 +126,7 @@ export default function QuizPage() {
 
   const submitAnswer = async () => {
     if (!session || !currentQuestion) return
-    
+
     setLoading(true)
     try {
       const response = await quizApi.submitAnswer({
@@ -133,12 +135,14 @@ export default function QuizPage() {
         answer: userAnswer,
       })
       setResult(response)
+      if (response.is_correct) setCorrectCount(prev => prev + 1)
       setSubmitted(true)
     } catch {
       // Mock logic
       setTimeout(() => {
         const isCorrect = userAnswer === MOCK_QUESTION.correct_answer
         setResult({ is_correct: isCorrect, explanation: MOCK_QUESTION.explanation })
+        if (isCorrect) setCorrectCount(prev => prev + 1)
         setSubmitted(true)
         setLoading(false)
       }, 400)
@@ -147,7 +151,7 @@ export default function QuizPage() {
 
   const nextQuestion = () => {
     if (!session) return
-    
+
     if (currentIndex < questionCount - 1) {
       setCurrentIndex(currentIndex + 1)
       loadQuestion(session.id, currentIndex + 1)
@@ -158,13 +162,14 @@ export default function QuizPage() {
 
   const finishQuiz = async () => {
     if (!session) return
-    
+
     setLoading(true)
     try {
       const report = await quizApi.finishSession(session.id)
       setFinalReport(report)
       setFinished(true)
       await gamificationApi.addXp(10 + (report.score * 2), 'Quiz complété')
+      recordQuizCompletion(correctCount, questionCount)
     } catch {
       setTimeout(() => {
         setFinalReport({
@@ -173,6 +178,7 @@ export default function QuizPage() {
           recommendations: ['Révisez les techniques de concentration', 'Entraînez-vous sur des cas pratiques']
         })
         setFinished(true)
+        recordQuizCompletion(correctCount, questionCount)
         setLoading(false)
       }, 500)
     }
@@ -188,7 +194,7 @@ export default function QuizPage() {
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[120px] pointer-events-none ${
           isSuccess ? 'bg-amber-500/10' : 'bg-primary/10'
         }`} />
-        
+
         <Card className="glass border-border/50 max-w-2xl w-full relative z-10 shadow-2xl">
           <CardHeader className="text-center pt-10 pb-6">
             <div className={`mx-auto p-4 rounded-full mb-4 w-fit ${isSuccess ? 'bg-amber-500/10' : 'bg-primary/10'}`}>
@@ -233,7 +239,7 @@ export default function QuizPage() {
                 </div>
               )}
             </div>
-            <Button onClick={() => { setSession(null); setFinished(false); setFinalReport(null); }} className="w-full h-12 gradient-primary text-white text-base shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
+            <Button onClick={() => { setSession(null); setFinished(false); setFinalReport(null); setCorrectCount(0); }} className="w-full h-12 gradient-primary text-white text-base shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
               Créer un nouveau quiz
             </Button>
           </CardContent>
@@ -262,7 +268,7 @@ export default function QuizPage() {
             </div>
           </div>
           <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-amber-500 transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             />
@@ -282,7 +288,7 @@ export default function QuizPage() {
                   {currentQuestion.options.map((option, i) => {
                     const isSelected = userAnswer === option
                     let buttonStyle = isSelected ? 'border-primary bg-primary/10 text-primary' : 'bg-secondary/40 border-border/40 hover:bg-secondary hover:border-border/80'
-                    
+
                     if (submitted && result) {
                       if (option === currentQuestion.correct_answer) {
                         buttonStyle = 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
@@ -302,7 +308,7 @@ export default function QuizPage() {
                       >
                         <div className="flex items-center gap-3">
                           <div className={`flex items-center justify-center h-6 w-6 rounded-md text-xs font-bold border ${
-                            isSelected && !submitted ? 'bg-primary text-white border-primary' : 
+                            isSelected && !submitted ? 'bg-primary text-white border-primary' :
                             submitted && option === currentQuestion.correct_answer ? 'bg-emerald-500 text-white border-emerald-500' :
                             'border-muted-foreground/30 text-muted-foreground'
                           }`}>
@@ -322,8 +328,8 @@ export default function QuizPage() {
               <div className={`mt-6 overflow-hidden transition-all duration-500 ${submitted ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                 {result && (
                   <div className={`p-5 rounded-2xl border ${
-                    result.is_correct 
-                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-50' 
+                    result.is_correct
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-50'
                       : 'bg-red-500/10 border-red-500/20 text-red-50'
                   }`}>
                     <div className="flex items-start gap-3">
@@ -349,17 +355,17 @@ export default function QuizPage() {
             {/* Actions */}
             <div className="mt-8 pt-6 border-t border-border/30 flex justify-end">
               {!submitted ? (
-                <Button 
-                  onClick={submitAnswer} 
-                  disabled={!userAnswer || loading} 
+                <Button
+                  onClick={submitAnswer}
+                  disabled={!userAnswer || loading}
                   className="h-11 px-8 gradient-primary text-white shadow-md hover:scale-[1.02] transition-transform gap-2"
                 >
                   {loading ? 'Vérification...' : 'Valider'}
                 </Button>
               ) : (
-                <Button 
-                  onClick={nextQuestion} 
-                  disabled={loading} 
+                <Button
+                  onClick={nextQuestion}
+                  disabled={loading}
                   className="h-11 px-8 gradient-primary text-white shadow-md hover:scale-[1.02] transition-transform gap-2"
                 >
                   {currentIndex < questionCount - 1 ? 'Question suivante' : 'Voir les résultats'}
@@ -388,7 +394,7 @@ export default function QuizPage() {
 
       <Card className="glass border-border/50 shadow-xl">
         <CardContent className="p-8 space-y-10">
-          
+
           {/* Documents */}
           <div>
             <div className="flex items-center gap-2 mb-4">
