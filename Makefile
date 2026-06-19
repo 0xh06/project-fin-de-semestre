@@ -82,15 +82,8 @@ lint:
 ## dirs : Crée l'arborescence de build
 dirs:
 	@mkdir -p $(BIN_DIR)
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/core
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/db
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/api
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/pdf
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/chat
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/review
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/progress
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/mindmap
-	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)/utils
+	@mkdir -p $(OBJ_DIR)/$(SRC_DIR)
+	@find $(SRC_DIR) -type d -exec mkdir -p $(OBJ_DIR)/{} \;
 	@mkdir -p $(OBJ_DIR)/$(LIB_DIR)/cJSON
 	@mkdir -p $(OBJ_DIR)/$(TEST_DIR)
 

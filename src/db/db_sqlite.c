@@ -342,17 +342,74 @@ DBError chat_message_save(const DBChatMessage *msg, int64_t *out_id) {
     return DB_OK;
 }
 
+static const char *safe_sqlite_text(sqlite3_stmt *stmt, int column) {
+    const unsigned char *value = sqlite3_column_text(stmt, column);
+    return value ? (const char *) value : "";
+}
+
 DBError sqlite_document_get_all_by_user(int64_t user_id, DBDocument **out_docs, int *out_count) {
-    /* STUB */
-    if (out_docs) *out_docs = NULL;
-    if (out_count) *out_count = 0;
+    if (!g_db || !out_docs || !out_count) return DB_ERR_INVALID_PARAM;
+    *out_docs = NULL;
+    *out_count = 0;
+
+    const char *sql =
+        "SELECT id, user_id, filename, content_text, summary_ai, tags, uploaded_at "
+        "FROM documents WHERE user_id = ? ORDER BY uploaded_at DESC;";
+    sqlite3_stmt *stmt = NULL;
+    int capacity = 8;
+    DBDocument *docs = malloc(capacity * sizeof(DBDocument));
+    if (!docs) return DB_ERR_ALLOC;
+
+    if (sqlite3_prepare_v2(g_db, sql, -1, &stmt, NULL) != SQLITE_OK) {
+        set_error("Preparation sqlite_document_get_all_by_user");
+        free(docs);
+        return DB_ERR_SQLITE;
+    }
+
+    sqlite3_bind_int64(stmt, 1, user_id);
+    int count = 0;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        if (count >= capacity) {
+            int new_capacity = capacity * 2;
+            DBDocument *resized = realloc(docs, new_capacity * sizeof(DBDocument));
+            if (!resized) {
+                sqlite3_finalize(stmt);
+                document_list_free(docs, count);
+                return DB_ERR_ALLOC;
+            }
+            docs = resized;
+            capacity = new_capacity;
+        }
+
+        DBDocument *doc = &docs[count];
+        memset(doc, 0, sizeof(*doc));
+        doc->id = sqlite3_column_int64(stmt, 0);
+        doc->user_id = sqlite3_column_int64(stmt, 1);
+        doc->filename = strdup_safe((const unsigned char *) safe_sqlite_text(stmt, 2));
+        doc->content_text = strdup_safe((const unsigned char *) safe_sqlite_text(stmt, 3));
+        doc->summary_ai = strdup_safe((const unsigned char *) safe_sqlite_text(stmt, 4));
+        doc->tags = strdup_safe((const unsigned char *) safe_sqlite_text(stmt, 5));
+        doc->uploaded_at = strdup_safe((const unsigned char *) safe_sqlite_text(stmt, 6));
+        count++;
+    }
+
+    sqlite3_finalize(stmt);
+    *out_docs = docs;
+    *out_count = count;
     return DB_OK;
 }
 
 void sqlite_document_list_free(DBDocument *docs, int count) {
-    /* STUB */
-    (void)docs;
-    (void)count;
+    if (!docs || count <= 0) return;
+    for (int i = 0; i < count; i++) {
+        free(docs[i].filename);
+        free(docs[i].content_text);
+        free(docs[i].summary_ai);
+        free(docs[i].tags);
+        free(docs[i].uploaded_at);
+    }
+    free(docs);
 }
 
 DBError sqlite_flashcard_update_review(int64_t card_id, double difficulty, int interval_days, const char *next_review) {

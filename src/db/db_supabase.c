@@ -8,7 +8,7 @@
 #include <string.h>
 #include "db/db_interface.h"
 #include "api/rest_client.h"
-#include <cJSON.h>
+#include "cJSON/cJSON.h"
 #include "utils/logger.h"
 
 /* Contexte Supabase */

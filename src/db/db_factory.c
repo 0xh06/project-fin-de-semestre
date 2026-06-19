@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include "db/db_factory.h"
 #include "core/config.h"
 #include "utils/string_utils.h"

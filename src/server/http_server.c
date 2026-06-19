@@ -1,7 +1,9 @@
+#define _POSIX_C_SOURCE 200809L
 #include "server/http_server.h"
 #include "mongoose/mongoose.h"
 #include "auth/jwt.h"
 #include "auth/oauth.h"
+#include "db/db.h"
 #include "utils/logger.h"
 #include "cJSON/cJSON.h"
 #include <stdio.h>
@@ -329,6 +331,196 @@ static void reply_auth_success(struct mg_connection *c, const HttpUser *user) {
     free(json);
     free(jwt);
     cJSON_Delete(resp);
+}
+
+static bool verify_auth(struct mg_http_message *hm, int64_t *out_user_id);
+
+static bool parse_document_upload_form(const struct mg_str *body, char **out_filename,
+                                       char **out_title, size_t *out_file_size) {
+    size_t ofs = 0;
+    struct mg_http_part part;
+    bool has_file = false;
+
+    if (out_filename) *out_filename = NULL;
+    if (out_title) *out_title = NULL;
+    if (out_file_size) *out_file_size = 0;
+
+    while ((ofs = mg_http_next_multipart(*body, ofs, &part)) > 0) {
+        if (mg_strcmp(part.name, mg_str("file")) == 0) {
+            if (part.filename.len > 0) {
+                if (out_filename) {
+                    *out_filename = mg_str_to_cstring(part.filename);
+                    if (!*out_filename) break;
+                }
+                if (out_file_size) *out_file_size = part.body.len;
+                has_file = true;
+            }
+        } else if (mg_strcmp(part.name, mg_str("title")) == 0) {
+            if (part.body.len > 0 && out_title) {
+                *out_title = malloc(part.body.len + 1);
+                if (!*out_title) break;
+                memcpy(*out_title, part.body.buf, part.body.len);
+                (*out_title)[part.body.len] = '\0';
+            }
+        }
+    }
+
+    if (!has_file) {
+        if (out_filename && *out_filename) {
+            free(*out_filename);
+            *out_filename = NULL;
+        }
+        if (out_title && *out_title) {
+            free(*out_title);
+            *out_title = NULL;
+        }
+        if (out_file_size) *out_file_size = 0;
+    }
+
+    return has_file;
+}
+
+static cJSON *build_document_json(int64_t id, int64_t user_id, const char *title,
+                                  const char *filename, const char *content_text,
+                                  const char *summary_ai, const char *tags,
+                                  size_t file_size_bytes, const char *uploaded_at) {
+    cJSON *obj = cJSON_CreateObject();
+    cJSON_AddNumberToObject(obj, "id", (double) id);
+    cJSON_AddNumberToObject(obj, "user_id", (double) user_id);
+    cJSON_AddStringToObject(obj, "title", title && title[0] ? title : (filename ? filename : ""));
+    cJSON_AddStringToObject(obj, "file_path", filename ? filename : "");
+    cJSON_AddStringToObject(obj, "content_text", content_text ? content_text : "");
+    cJSON_AddStringToObject(obj, "summary_ai", summary_ai ? summary_ai : "");
+    cJSON_AddStringToObject(obj, "tags", tags ? tags : "");
+    cJSON_AddNumberToObject(obj, "page_count", 0);
+    cJSON_AddNumberToObject(obj, "file_size_bytes", (double) file_size_bytes);
+    cJSON_AddStringToObject(obj, "imported_at", uploaded_at ? uploaded_at : "");
+    return obj;
+}
+
+static void handle_documents_upload(struct mg_connection *c, struct mg_http_message *hm) {
+    int64_t user_id = 0;
+    char *filename = NULL;
+    char *title = NULL;
+    size_t file_size = 0;
+    char *uploaded_at = NULL;
+    int64_t document_id = 0;
+
+    if (!method_is(hm, "POST")) {
+        reply_error_code(c, 405, "Méthode non autorisée.", "invalid_request");
+        return;
+    }
+
+    if (!verify_auth(hm, &user_id)) {
+        reply_error_code(c, 401, "Non autorisé.", "unauthorized");
+        return;
+    }
+
+    if (!parse_document_upload_form(&hm->body, &filename, &title, &file_size) || !filename) {
+        reply_error_code(c, 400, "Requête invalide ou fichier manquant.", "invalid_request");
+        free(filename);
+        free(title);
+        return;
+    }
+
+    DBDocument doc;
+    memset(&doc, 0, sizeof(doc));
+    doc.user_id = user_id;
+    doc.filename = filename;
+    doc.content_text = "Document importé";
+    doc.summary_ai = "";
+    doc.tags = "";
+
+    if (document_save(&doc, &document_id) != DB_OK) {
+        LOG_ERROR("document_save failed: %s", db_error_msg());
+        reply_error(c, 500, "Impossible de sauvegarder le document.");
+        free(filename);
+        free(title);
+        return;
+    }
+
+    sqlite3 *db = get_db();
+    if (db) {
+        sqlite3_stmt *stmt = NULL;
+        const char *query_sql = "SELECT uploaded_at FROM documents WHERE id = ? LIMIT 1;";
+        if (sqlite3_prepare_v2(db, query_sql, -1, &stmt, NULL) == SQLITE_OK) {
+            sqlite3_bind_int64(stmt, 1, document_id);
+            if (sqlite3_step(stmt) == SQLITE_ROW) {
+                const unsigned char *text = sqlite3_column_text(stmt, 0);
+                if (text) {
+                    uploaded_at = strdup((const char *)text);
+                }
+            }
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    cJSON *resp = build_document_json(document_id, user_id, title ? title : filename, filename,
+                                      doc.content_text, doc.summary_ai, doc.tags, file_size,
+                                      uploaded_at ? uploaded_at : "");
+    char *json = cJSON_PrintUnformatted(resp);
+    reply_json(c, 200, json);
+
+    free(json);
+    cJSON_Delete(resp);
+    free(filename);
+    free(title);
+    free(uploaded_at);
+}
+
+static void handle_documents_list(struct mg_connection *c, struct mg_http_message *hm) {
+    sqlite3 *db = get_db();
+    int64_t user_id = 0;
+    sqlite3_stmt *stmt = NULL;
+    const char *select_sql =
+        "SELECT id, user_id, filename, content_text, summary_ai, tags, uploaded_at "
+        "FROM documents WHERE user_id = ? ORDER BY uploaded_at DESC;";
+
+    if (!method_is(hm, "GET")) {
+        reply_error_code(c, 405, "Méthode non autorisée.", "invalid_request");
+        return;
+    }
+
+    if (!verify_auth(hm, &user_id)) {
+        reply_error_code(c, 401, "Non autorisé.", "unauthorized");
+        return;
+    }
+
+    if (!db) {
+        reply_error(c, 500, "Base de données non disponible.");
+        return;
+    }
+
+    if (sqlite3_prepare_v2(db, select_sql, -1, &stmt, NULL) != SQLITE_OK) {
+        LOG_ERROR("SQLite prepare documents list: %s", sqlite3_errmsg(db));
+        reply_error(c, 500, "Impossible de récupérer les documents.");
+        return;
+    }
+
+    sqlite3_bind_int64(stmt, 1, user_id);
+    cJSON *array = cJSON_CreateArray();
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        int64_t id = sqlite3_column_int64(stmt, 0);
+        int64_t row_user_id = sqlite3_column_int64(stmt, 1);
+        const char *filename = safe_sqlite_text(stmt, 2);
+        const char *content_text = safe_sqlite_text(stmt, 3);
+        const char *summary_ai = safe_sqlite_text(stmt, 4);
+        const char *tags = safe_sqlite_text(stmt, 5);
+        const char *uploaded_at = safe_sqlite_text(stmt, 6);
+
+        cJSON_AddItemToArray(array,
+            build_document_json(id, row_user_id, filename, filename,
+                                content_text, summary_ai, tags, 0,
+                                uploaded_at));
+    }
+
+    sqlite3_finalize(stmt);
+
+    char *json = cJSON_PrintUnformatted(array);
+    reply_json(c, 200, json);
+    free(json);
+    cJSON_Delete(array);
 }
 
 // --- Middlewares ---
@@ -803,6 +995,12 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data) {
         }
         else if (mg_strcmp(hm->uri, mg_str("/api/gamification/dashboard")) == 0) {
             handle_dashboard(c, hm);
+        }
+        else if (mg_strcmp(hm->uri, mg_str("/api/documents/upload")) == 0) {
+            handle_documents_upload(c, hm);
+        }
+        else if (mg_strcmp(hm->uri, mg_str("/api/documents")) == 0) {
+            handle_documents_list(c, hm);
         }
         else {
             reply_error(c, 404, "Endpoint non trouvé");
