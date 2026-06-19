@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smartstudy-backend:latest
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    volumes:
+      - smartstudy_data:/data
+    expose:
+      - "8080"
+
+  proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+
+volumes:
+  smartstudy_data:
+    name: smartstudy_production_data

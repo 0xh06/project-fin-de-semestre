@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SmartStudy AI - Rapport PDF</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --panel: #111827;
+        --border: #334155;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #60a5fa;
+      }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 55%, #020617 100%);
+        color: var(--text);
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .shell {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
+      }
+      .header {
+        padding: 18px 24px 12px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(15, 23, 42, 0.72);
+        backdrop-filter: blur(10px);
+      }
+      .title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .subtitle {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .actions a {
+        color: var(--text);
+        text-decoration: none;
+        border: 1px solid rgba(96, 165, 250, 0.35);
+        background: rgba(96, 165, 250, 0.12);
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 13px;
+      }
+      .frame {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: white;
+      }
+      .fallback {
+        display: none;
+        padding: 24px;
+        color: var(--muted);
+      }
+      .embed {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="header">
+        <h1 class="title">SmartStudy AI - Rapport PDF</h1>
+        <p class="subtitle">Visualisation du document généré localement.</p>
+        <div class="actions">
+          <a href="./SmartStudy_AI_rapport.pdf" download>Télécharger le PDF</a>
+          <a href="./SmartStudy_AI_rapport.pdf" target="_blank" rel="noreferrer">Ouvrir le PDF brut</a>
+        </div>
+      </div>
+      <object class="embed" data="./SmartStudy_AI_rapport.pdf" type="application/pdf">
+        <div class="fallback">
+          Le navigateur ne peut pas afficher le PDF intégré.
+          <br />
+          Utilise le lien de téléchargement ci-dessus pour l’ouvrir dans un lecteur PDF local.
+        </div>
+      </object>
+    </div>
+  </body>
+</html>
